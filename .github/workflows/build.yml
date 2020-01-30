@@ -20,4 +20,4 @@ jobs:
         sudo apt-get update
         sudo apt-get install g++ libcpprest-dev make libsystemd-dev pkg-config libstdc++6 libcpprest2.10 libcurl4-g* libsystemd0
     - name: build and run unit tests in a container
-      run: make dockerize
+      run: cd rest; make dockerize
