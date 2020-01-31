@@ -21,17 +21,32 @@ using namespace std;
 
 class Sdj_raii : public ::testing::Test {
 protected:
-  sd_journal_raii tst1, tst2;
+  sd_journal_raii tst;
 public:
-  Sdj_raii():tst1{},tst2{"./"s}{}
+  Sdj_raii():tst{"./testdata/"s}{}
   ~Sdj_raii() {}
 };
 
 TEST_F(Sdj_raii, ctor) {
   //Make sure that these break the build
-  //auto bad1{tst1};
-  //sd_journal_raii bad2{}; bad2 = tst1;
-  ASSERT_THROW(sd_journal_raii bad{"./no/such/dir"};, runtime_error);
+  //auto bad1{tst};
+  //sd_journal_raii bad2{}; bad2 = tst;
+  ASSERT_THROW(sd_journal_raii bad3{"./no/such/dir"};, runtime_error);
+  ASSERT_THROW(sd_journal_raii bad4{"./"};, runtime_error);//"Empty journal"
+}
+
+class Sdj_wrap : public ::testing::Test {
+protected:
+  sd_journal_wrap tst;
+public:
+  Sdj_wrap():tst{"./testdata/"s}{}
+  ~Sdj_wrap() {}
+};
+
+TEST_F(Sdj_wrap, vecAll) {
+  auto v{tst.vec_all()};
+  //To be updated alongside testdata
+  ASSERT_EQ(v.size(), 60);
 }
 
 //TODO: unify with others and singletonify

@@ -17,7 +17,7 @@ FROM build AS test
 RUN apt-get update && apt-get install -y --force-yes --fix-missing \
     libcpprest2.10 libcurl4-g* libgmock-dev libsystemd0
 
-COPY testlog .
+COPY testdata/testlog.journal testdata/testlog.journal
 
 RUN make test
 RUN ./test
