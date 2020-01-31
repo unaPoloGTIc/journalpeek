@@ -1,7 +1,7 @@
 FROM debian:bullseye AS build
 
 RUN apt-get update && apt-get install -y --force-yes --fix-missing \
-    g++ libcpprest-dev make libsystemd-dev pkg-config libstdc++6
+    g++ libcpprest-dev make libsystemd-dev pkg-config libstdc++6 valgrind
 
 #TODO: just copy dir?
 COPY rest.cpp .

@@ -19,16 +19,19 @@ using namespace web::http::client;
 
 using namespace std;
 
-class Unit : public ::testing::Test {
+class Sdj_raii : public ::testing::Test {
 protected:
-
+  sd_journal_raii tst1, tst2;
 public:
-  Unit() {}
-  ~Unit() {}
+  Sdj_raii():tst1{},tst2{"./"s}{}
+  ~Sdj_raii() {}
 };
 
-TEST_F(Unit, ctor) {
-  ASSERT_EQ("asd", "asd");
+TEST_F(Sdj_raii, ctor) {
+  //Make sure that these break the build
+  //auto bad1{tst1};
+  //sd_journal_raii bad2{}; bad2 = tst1;
+  ASSERT_THROW(sd_journal_raii bad{"./no/such/dir"};, runtime_error);
 }
 
 //TODO: unify with others and singletonify
