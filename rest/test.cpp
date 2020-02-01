@@ -47,6 +47,14 @@ TEST_F(Sdj_wrap, vecAll) {
   auto v{tst.vec_all()};
   //To be updated alongside testdata
   ASSERT_EQ(v.size(), 60);
+  ASSERT_EQ(v[0].size(), 29);
+  ASSERT_EQ(v[0][0], "_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s);
+}
+
+TEST_F(Sdj_wrap, vecMsgs) {
+  auto v{tst.vec_msgs()};
+  ASSERT_EQ(v.size(), 60);
+  ASSERT_EQ(v[0], "MESSAGE=Started Network Manager Script Dispatcher Service."s);
 }
 
 //TODO: unify with others and singletonify

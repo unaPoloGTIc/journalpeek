@@ -78,6 +78,15 @@ class sd_journal_wrap {
 private:
   sd_journal_raii journal;
 
+  using recordCallback = function<void(sd_journal_raii&)>;
+  void recordIterator(recordCallback rcb)
+  {
+    SD_JOURNAL_FOREACH(journal)
+      {
+	rcb(journal);
+      }
+  }
+
 public:
   sd_journal_wrap():journal{}{};
   sd_journal_wrap(string path):journal{path}{};
@@ -88,18 +97,43 @@ public:
   sd_journal_wrap(sd_journal_wrap&&) = default;
   sd_journal_wrap& operator=(sd_journal_wrap&&) = default;
 
-  vector<string> vec_all()
+  vector<vector<string>> vec_all()
+  {
+    vector<vector<string>> ret;
+    auto recHandler = [&ret](sd_journal_raii& journal)
+		      {
+			const void *data;
+			size_t length;
+			vector<string> rec;
+			SD_JOURNAL_FOREACH_DATA(journal, data, length)
+			  {
+			    string tmp{static_cast<const char*>(data)};
+			    rec.push_back(tmp);
+			  }
+			ret.push_back(move(rec));
+		      };
+    recordIterator(recHandler);
+    return ret;//moves
+  }
+
+  vector<string> vec_msgs()
   {
     vector<string> ret;
-    SD_JOURNAL_FOREACH(journal) {
-      const char *d;
-      size_t l;
-      if (auto r = sd_journal_get_data(journal, "MESSAGE", (const void **)&d, &l); r < 0) {
-	cerr << "Failed to read message field: " << string{strerror(-r)} << endl;
-	continue;
-      }
-      ret.push_back(move(string{d}));
-    }
+    auto recHandler = [&ret](sd_journal_raii& journal)
+		      {
+			const char *d;
+			size_t l;
+			if (auto r = sd_journal_get_data(journal,
+							 "MESSAGE",
+							 (const void **)&d,
+							 &l); r < 0)
+			  {
+			    cerr << "Failed to read message field: " << string{strerror(-r)} << endl;
+			    return;
+			  }
+			  ret.emplace_back(d);
+		      };
+    recordIterator(recHandler);
     return ret;//moves
   }
 };
