@@ -45,17 +45,22 @@ public:
   virtual ~sdj_opener(){sd_journal_close(raw);};
 };
 
+extern string messageLiteral;
+
 class sd_journal_raii: public sdj_opener {
 private:
-
+  vector<string> matches;
+public:
   void primeJournal()
   {
+    if (auto ret{sd_journal_seek_head(raw)}; ret < 0)
+      throw runtime_error("Failed to reset to journal head");
     if (auto ret{sd_journal_next(raw)}; ret == 0)
       throw runtime_error("Empty journal");
     else if (ret < 0)
       throw runtime_error("Error during first read");
   }
-public:
+
   sd_journal_raii():sdj_opener()
   {
     primeJournal();
@@ -72,6 +77,20 @@ public:
   sd_journal_raii& operator=(sd_journal_raii&&) = default;
 
   operator sd_journal*(){return raw;}
+
+  void addExactMatch(string text, string field = messageLiteral)
+  {
+    //TODO: not needed if sd_journal copies.
+    auto tmp{matches.emplace_back(field + "="s + text)};
+    sd_journal_add_match(raw, tmp.c_str(), 0);
+    primeJournal();
+  }
+
+  void removeMatches()
+  {
+    sd_journal_flush_matches(raw);
+    matches.clear();
+  }
 };
 
 class sd_journal_wrap {
@@ -100,6 +119,7 @@ public:
   vector<vector<string>> vec_all()
   {
     vector<vector<string>> ret;
+    journal.primeJournal();
     auto recHandler = [&ret](sd_journal_raii& journal)
 		      {
 			const void *data;
@@ -107,35 +127,66 @@ public:
 			vector<string> rec;
 			SD_JOURNAL_FOREACH_DATA(journal, data, length)
 			  {
-			    string tmp{static_cast<const char*>(data)};
-			    rec.push_back(tmp);
+			    rec.emplace_back(static_cast<const char*>(data));
 			  }
 			ret.push_back(move(rec));
 		      };
     recordIterator(recHandler);
+    journal.primeJournal();
     return ret;//moves
   }
 
-  vector<string> vec_msgs()
+  //TODO: overload for regex
+  vector<string> vec_msgs(string filter = ""s, bool ignoreCase = false)
   {
     vector<string> ret;
-    auto recHandler = [&ret](sd_journal_raii& journal)
+    journal.primeJournal();
+    auto recHandler = [&ret, filter, ignoreCase](sd_journal_raii& journal)
 		      {
 			const char *d;
 			size_t l;
 			if (auto r = sd_journal_get_data(journal,
-							 "MESSAGE",
+							 messageLiteral.c_str(),
 							 (const void **)&d,
 							 &l); r < 0)
 			  {
 			    cerr << "Failed to read message field: " << string{strerror(-r)} << endl;
 			    return;
 			  }
-			  ret.emplace_back(d);
+
+			string msg{d};
+			//remove field name
+			msg = msg.substr(msg.find('=')+1, msg.npos);
+			string msgCpy{msg}, filterCpy{filter};
+			if (ignoreCase)
+			  {
+			    auto lowerize = [](auto& i){i = tolower(i);};
+			    for_each(msg.begin(), msg.end(), lowerize);
+			    for_each(filterCpy.begin(), filterCpy.end(), lowerize);
+			  }
+			if (msg.find(filterCpy) != msg.npos)
+			  ret.push_back(move(msgCpy));
 		      };
     recordIterator(recHandler);
+    journal.primeJournal();
     return ret;//moves
   }
+
+  vector<string> fieldnames()
+  {
+    const char *field;
+    vector<string> ret;
+    SD_JOURNAL_FOREACH_FIELD(journal, field)
+      ret.emplace_back(field);
+    sd_journal_restart_fields(journal);
+    return ret;
+  }
+
+  void addExactMessageMatch(string text)
+  {
+    journal.addExactMatch(text);
+  }
+
 };
 
 class restServer {

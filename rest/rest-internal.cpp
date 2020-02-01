@@ -1,5 +1,7 @@
 #include "rest-internal.h"
 
+string messageLiteral = "MESSAGE"s;
+
 restServer::restServer(handlersMap endpoints, string port = "6666"s) // TODO: https
   :s("http://0.0.0.0:"s + port + "/"){ 
     s.support(web::http::methods::GET, [endpoints](web::http::http_request req) {

@@ -35,6 +35,7 @@ TEST_F(Sdj_raii, ctor) {
   ASSERT_THROW(sd_journal_raii bad4{"./"};, runtime_error);//"Empty journal"
 }
 
+//To be updated alongside testdata
 class Sdj_wrap : public ::testing::Test {
 protected:
   sd_journal_wrap tst;
@@ -45,16 +46,51 @@ public:
 
 TEST_F(Sdj_wrap, vecAll) {
   auto v{tst.vec_all()};
-  //To be updated alongside testdata
   ASSERT_EQ(v.size(), 60);
   ASSERT_EQ(v[0].size(), 29);
-  ASSERT_EQ(v[0][0], "_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s);
+  ASSERT_TRUE(any_of(v[0].cbegin(),
+		     v[0].cend(),
+		     [](auto i)
+		     {return i=="_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s;}));
 }
 
 TEST_F(Sdj_wrap, vecMsgs) {
   auto v{tst.vec_msgs()};
   ASSERT_EQ(v.size(), 60);
-  ASSERT_EQ(v[0], "MESSAGE=Started Network Manager Script Dispatcher Service."s);
+  ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
+}
+
+TEST_F(Sdj_wrap, vecMsgsFilterCaseful) {
+  auto v{tst.vec_msgs("Started Network Manager"s)};
+  ASSERT_EQ(v.size(), 1);
+  ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
+}
+
+TEST_F(Sdj_wrap, vecMsgsFilterIgnoreCase) {
+  auto v{tst.vec_msgs("sTARTED Network Manager"s, true)};
+  ASSERT_EQ(v.size(), 1);
+  ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
+}
+
+TEST_F(Sdj_wrap, vecMsgsReset) {
+  auto v{tst.vec_msgs()};
+  tst.addExactMessageMatch("daemon start"s);
+  ASSERT_NO_THROW(auto v2{tst.vec_msgs()});
+}
+
+TEST_F(Sdj_wrap, fields) {
+  auto v{tst.fieldnames()};
+  ASSERT_EQ(v.size(), 42);
+  ASSERT_TRUE(any_of(v.cbegin(),
+		     v.cend(),
+		     [](auto i)
+		     {return i=="_SOURCE_REALTIME_TIMESTAMP"s;}));
+}
+
+TEST_F(Sdj_wrap, exactMatch) {
+  tst.addExactMessageMatch("daemon start"s);
+  auto v{tst.vec_msgs()};
+  ASSERT_EQ(v.size(), 1);
 }
 
 //TODO: unify with others and singletonify
@@ -66,6 +102,7 @@ public:
 
 int main(int argc, char **argv) {
   globalRaii init{};
+  //TODO: generate testdata journal.
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
