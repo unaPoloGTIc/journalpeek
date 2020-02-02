@@ -72,10 +72,24 @@ TEST_F(Sdj_wrap, vecMsgsFilterIgnoreCase) {
   ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
 }
 
-TEST_F(Sdj_wrap, vecMsgsReset) {
+TEST_F(Sdj_wrap, vecMsgsResetAfterMatch) {
   auto v{tst.vec_msgs()};
   tst.addExactMessageMatch("daemon start"s);
   ASSERT_NO_THROW(auto v2{tst.vec_msgs()});
+}
+
+TEST_F(Sdj_wrap, exactMatch) {
+  tst.addExactMessageMatch("daemon start"s);
+  auto v{tst.vec_msgs()};
+  ASSERT_EQ(v.size(), 1);
+}
+
+TEST_F(Sdj_wrap, resetMatch) {
+  tst.addExactMessageMatch("daemon start"s);
+  auto v{tst.vec_msgs()};
+  tst.removeMatches();
+  auto v2{tst.vec_msgs()};
+  ASSERT_EQ(v2.size(), 60);
 }
 
 TEST_F(Sdj_wrap, fields) {
@@ -85,12 +99,6 @@ TEST_F(Sdj_wrap, fields) {
 		     v.cend(),
 		     [](auto i)
 		     {return i=="_SOURCE_REALTIME_TIMESTAMP"s;}));
-}
-
-TEST_F(Sdj_wrap, exactMatch) {
-  tst.addExactMessageMatch("daemon start"s);
-  auto v{tst.vec_msgs()};
-  ASSERT_EQ(v.size(), 1);
 }
 
 //TODO: unify with others and singletonify

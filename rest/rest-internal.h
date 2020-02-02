@@ -187,6 +187,10 @@ public:
     journal.addExactMatch(text);
   }
 
+  void removeMatches()
+  {
+    journal.removeMatches();
+  }
 };
 
 class restServer {
