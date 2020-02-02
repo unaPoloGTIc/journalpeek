@@ -66,6 +66,11 @@ TEST_F(Sdj_wrap, vecMsgsFilterCaseful) {
   ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
 }
 
+TEST_F(Sdj_wrap, vecMsgsFilterMultiple) {
+  auto v{tst.vec_msgs("libinput error"s)};
+  ASSERT_EQ(v.size(), 6);
+}
+
 TEST_F(Sdj_wrap, vecMsgsFilterIgnoreCase) {
   auto v{tst.vec_msgs("sTARTED Network Manager"s, true)};
   ASSERT_EQ(v.size(), 1);
@@ -99,6 +104,26 @@ TEST_F(Sdj_wrap, fields) {
 		     v.cend(),
 		     [](auto i)
 		     {return i=="_SOURCE_REALTIME_TIMESTAMP"s;}));
+}
+
+TEST_F(Sdj_wrap, subjournalSize) {
+  int offset{10}, pagesize{10};
+  auto v{tst.subJournal(offset, pagesize)};
+  ASSERT_EQ(v.size(), pagesize);
+}
+
+TEST_F(Sdj_wrap, subjournalContentZerooffset) {
+  int offset{0}, pagesize{10};
+  auto v{tst.subJournal(offset, pagesize)};
+  auto all{tst.vec_msgs()};
+  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin()+offset));
+}
+
+TEST_F(Sdj_wrap, subjournalContentPositiveoffset) {
+  int offset{10}, pagesize{10};
+  auto v{tst.subJournal(offset, pagesize)};
+  auto all{tst.vec_msgs()};
+  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin()+offset));
 }
 
 //TODO: unify with others and singletonify

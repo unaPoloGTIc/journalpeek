@@ -51,12 +51,12 @@ class sd_journal_raii: public sdj_opener {
 private:
   vector<string> matches;
 public:
-  void primeJournal()
+  void primeJournal(int offset = 1)
   {
     if (auto ret{sd_journal_seek_head(raw)}; ret < 0)
       throw runtime_error("Failed to reset to journal head");
-    if (auto ret{sd_journal_next(raw)}; ret == 0)
-      throw runtime_error("Empty journal");
+    if (auto ret{sd_journal_next_skip(raw, offset)}; ret < offset)
+      throw runtime_error("Journal empty or shorter than offset");
     else if (ret < 0)
       throw runtime_error("Error during first read");
   }
@@ -136,6 +136,9 @@ public:
     return ret;//moves
   }
 
+  static void removeFieldName(string& msg)
+  {msg = msg.substr(msg.find('=')+1, msg.npos);}
+
   //TODO: overload for regex
   vector<string> vec_msgs(string filter = ""s, bool ignoreCase = false)
   {
@@ -147,7 +150,7 @@ public:
 			size_t l;
 			if (auto r = sd_journal_get_data(journal,
 							 messageLiteral.c_str(),
-							 (const void **)&d,
+							 reinterpret_cast<const void **>(&d),
 							 &l); r < 0)
 			  {
 			    cerr << "Failed to read message field: " << string{strerror(-r)} << endl;
@@ -155,8 +158,7 @@ public:
 			  }
 
 			string msg{d};
-			//remove field name
-			msg = msg.substr(msg.find('=')+1, msg.npos);
+			removeFieldName(msg);
 			string msgCpy{msg}, filterCpy{filter};
 			if (ignoreCase)
 			  {
@@ -190,6 +192,26 @@ public:
   void removeMatches()
   {
     journal.removeMatches();
+  }
+
+  vector<string> subJournal(int offset, int pagesize = 100)
+  {
+    vector<string> ret;
+    auto getOne{[](sd_journal_raii& journal, vector<string>& ret){
+		  const char *d;
+		  size_t l;
+		  int get {sd_journal_get_data(journal,
+					       messageLiteral.c_str(),
+					       reinterpret_cast<const void **>(&d),
+					       &l)};
+		  removeFieldName(ret.emplace_back(d));
+		  int next{sd_journal_next(journal)};
+		  return get == 0 &&  next > 0;}};
+
+    journal.primeJournal(offset+1);
+    for(; pagesize > 0 && getOne(journal, ret); pagesize--){}
+    journal.primeJournal();
+    return ret;
   }
 };
 
