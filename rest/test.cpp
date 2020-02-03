@@ -35,6 +35,44 @@ TEST_F(Sdj_raii, ctor) {
   ASSERT_THROW(sd_journal_raii bad4{"./"};, runtime_error);//"Empty journal"
 }
 
+class none : public ::testing::Test {
+protected:
+public:
+};
+
+//TODO: replace testdata so that we could test ctor with it.
+TEST_F(none, oringFlags) {
+  ASSERT_EQ(sdj_opener::flagsToInt({}),0);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::LOCAL}), SD_JOURNAL_LOCAL_ONLY);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::RUNTIME}), SD_JOURNAL_RUNTIME_ONLY);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::SYSTEM}), SD_JOURNAL_SYSTEM);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::USER}), SD_JOURNAL_CURRENT_USER);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::OS_ROOT}), SD_JOURNAL_OS_ROOT);
+
+  auto res{sdj_opener::flagsToInt({sdj_opener::openFlags::OS_ROOT, sdj_opener::openFlags::SYSTEM})};
+  ASSERT_EQ(res, SD_JOURNAL_OS_ROOT | SD_JOURNAL_SYSTEM);
+
+  ::testing::StaticAssertTypeEq<decltype(res), int>();
+}
+
+TEST_F(none, vecstrConv) {
+  string s1{"str1"s};
+  string s2{"str2"s};
+  string s3{"str3"s};
+  sdj_opener::vecstrConv conv({s1, s2, s3});
+  const char **dest{conv};
+
+  ASSERT_STREQ(s1.c_str(), dest[0]);
+  ASSERT_STREQ(s2.c_str(), dest[1]);
+  ASSERT_STREQ(s3.c_str(), dest[2]);
+
+  //TODO type assertion for sdj_opener::vecstrConv
+}
+
+TEST_F(none, vecstrCtor) {
+  sd_journal_wrap tst1{vector<string>{"./testdata/testlog.journal"s}};
+}
+
 //To be updated alongside testdata
 class Sdj_wrap : public ::testing::Test {
 protected:
@@ -125,6 +163,50 @@ TEST_F(Sdj_wrap, subjournalContentPositiveoffset) {
   auto all{tst.vec_msgs()};
   ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin()+offset));
 }
+
+TEST_F(Sdj_wrap, disjunction) {
+  int msgCount{1}, exeCount{8};
+  tst.addExactMessageMatch("daemon start"s, "MESSAGE");
+  auto v1{tst.vec_msgs()};
+  ASSERT_EQ(v1.size(),msgCount );
+  tst.removeMatches();
+
+  tst.addExactMessageMatch("/usr/bin/dbus-daemon"s, "_EXE");
+  auto v2{tst.vec_msgs()};
+  ASSERT_EQ(v2.size(), exeCount);
+  tst.removeMatches();
+
+  vector<string> v{"_EXE=/usr/bin/dbus-daemon"s};
+  tst.addDisjunction(v);
+  tst.addExactMessageMatch("daemon start"s, "MESSAGE");
+  auto m{tst.vec_msgs()};
+  ASSERT_GE(m.size(), max(exeCount,msgCount));//TODO: this reveales a bug!
+  for (auto i: m)
+    cout << i << endl;//TODO: 'daemon start' shows twice
+  cout << m.size() << endl; //TODO: why not exeCount+msgCount
+}
+
+TEST_F(Sdj_wrap, conjunction) {
+  int msgCount{1}, bootCount{60};
+  tst.addExactMessageMatch("daemon start"s, "MESSAGE");
+  auto v1{tst.vec_msgs()};
+  ASSERT_EQ(v1.size(),msgCount );
+  tst.removeMatches();
+
+  tst.addExactMessageMatch("3ebd06f1166c461bbfcd3028da1cf2c2"s, "_BOOT_ID");
+  auto v2{tst.vec_msgs()};
+  ASSERT_EQ(v2.size(), bootCount);
+  tst.removeMatches();
+
+  vector<string> v{"_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s};
+  tst.addConjunction(v);
+  tst.addExactMessageMatch("daemon start"s, "MESSAGE");
+  auto m{tst.vec_msgs()};
+  ASSERT_EQ(m.size(), min(bootCount,msgCount));
+}
+
+//TODOs: add tests for:
+//regex search
 
 //TODO: unify with others and singletonify
 class globalRaii {

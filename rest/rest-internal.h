@@ -22,19 +22,79 @@ using handlersMap =
 
 class sdj_opener {
 protected:
+public:
   sd_journal *raw;//My kingdom for a unique_ptr
 
-public:
-  sdj_opener()
+  using vecstr = vector<string>;
+  class vecstrConv final{
+   private:
+    vecstr src;
+    const char** data;
+  public:
+    vecstrConv(vecstr&& d):src{d} {data = new const char*[src.size()+1];}
+    vecstrConv (const vecstrConv &) = delete;
+    vecstrConv& operator=(const vecstrConv&) = delete;
+
+    vecstrConv(vecstrConv&&) = default;
+    vecstrConv& operator=(vecstrConv&&) = default;
+    ~vecstrConv() {delete[] data;}
+
+    operator const char** ()
+    {
+      const char** iter{data};
+      for (auto& i: src)
+	*iter++ = i.c_str();
+      *iter=nullptr;
+      return data;
+    }
+  };
+
+  enum class openFlags:int
+    {
+
+     LOCAL = SD_JOURNAL_LOCAL_ONLY,
+     RUNTIME =  SD_JOURNAL_RUNTIME_ONLY,
+     SYSTEM = SD_JOURNAL_SYSTEM,
+     USER = SD_JOURNAL_CURRENT_USER,
+     OS_ROOT = SD_JOURNAL_OS_ROOT,
+     //Not yet available in debian testing
+     //ALL_NAMESPACES = SD_JOURNAL_ALL_NAMESPACES,
+     //INCLUDE_DEFAULT_NAMESPACE = SD_JOURNAL_INCLUDE_DEFAULT_NAMESPACE,
+    };
+
+  using flagList = initializer_list<openFlags>;
+
+  static int flagsToInt(flagList l)
   {
-    if (sd_journal_open(&raw, 0) < 0)
+    int ret = 0;
+    for (auto f:l)
+      ret |= static_cast<int>(f);
+    return ret;
+  }
+
+  sdj_opener( int flags = 0)
+  {
+    if (sd_journal_open(&raw, flags) < 0)
       throw runtime_error("Can't open default journal");
   }
-  sdj_opener(string path)
+  sdj_opener(flagList fl):
+    sdj_opener{flagsToInt(fl)}{}
+
+  sdj_opener(string path, int flags = 0)
   {
-   if (sd_journal_open_directory(&raw, path.c_str(), 0) < 0)
+    if (sd_journal_open_directory(&raw, path.c_str(), flags) < 0)
       throw runtime_error("Can't open journal in path: " + path);
   }
+  sdj_opener(string path, flagList fl):
+    sdj_opener{path,flagsToInt(fl)}{}
+
+  sdj_opener(vecstr &&paths, int flags = 0)
+  {
+    if (sd_journal_open_files(&raw, vecstrConv{move(paths)}, flags) < 0)
+      throw runtime_error("Can't open journal files");
+  }
+  sdj_opener(vecstr &&paths, flagList fl):
+    sdj_opener{move(paths),flagsToInt(fl)}{}
 
   sdj_opener(const sdj_opener&) = delete;
   sdj_opener& operator=(const sdj_opener&) = delete;
@@ -48,8 +108,19 @@ public:
 extern string messageLiteral;
 
 class sd_journal_raii: public sdj_opener {
-private:
-  vector<string> matches;
+
+  void addLogicalMatchers(const vector<string> &terms, function<int(sd_journal *)> delegate)
+  {
+    for (auto &i: terms)
+      {
+	if (sd_journal_add_match(raw, i.c_str(), 0) < 0)
+	  throw runtime_error("Could not add match: " + i);
+      }
+    if (delegate(raw) < 0)
+     throw runtime_error("Could not delegate to logical matcher") ;
+    primeJournal();
+  }
+
 public:
   void primeJournal(int offset = 1)
   {
@@ -61,11 +132,29 @@ public:
       throw runtime_error("Error during first read");
   }
 
-  sd_journal_raii():sdj_opener()
+  sd_journal_raii(int flags = 0):sdj_opener(flags)
   {
     primeJournal();
   }
-  sd_journal_raii(string path):sdj_opener(path)
+  sd_journal_raii(sdj_opener::flagList fl):sdj_opener(fl)
+  {
+    primeJournal();
+  }
+  sd_journal_raii(string path, int flags = 0):sdj_opener(path, flags)
+  {
+    primeJournal();
+  }
+  sd_journal_raii(string path, sdj_opener::flagList fl):sdj_opener(path, fl)
+  {
+    primeJournal();
+  }
+  sd_journal_raii(sdj_opener::vecstr &&paths, int flags = 0):
+    sdj_opener(move(paths), flags)
+  {
+    primeJournal();
+  }
+  sd_journal_raii(sdj_opener::vecstr &&paths, sdj_opener::flagList fl):
+    sdj_opener(move(paths), fl)
   {
     primeJournal();
   }
@@ -80,16 +169,39 @@ public:
 
   void addExactMatch(string text, string field = messageLiteral)
   {
-    //TODO: not needed if sd_journal copies.
-    auto tmp{matches.emplace_back(field + "="s + text)};
-    sd_journal_add_match(raw, tmp.c_str(), 0);
+    string tmp{field + "="s + text};
+    if (sd_journal_add_match(raw, tmp.c_str(), 0) < 0)
+      throw runtime_error("Failed to add match: " + tmp);
     primeJournal();
   }
 
   void removeMatches()
   {
     sd_journal_flush_matches(raw);
-    matches.clear();
+  }
+
+  void addDisjunction(const vector<string> &terms)
+  {
+    try
+      {
+	addLogicalMatchers(terms, sd_journal_add_disjunction);
+      }
+    catch (runtime_error& e)
+      {
+	throw runtime_error("failed to add disjunction: "s + string{e.what()});
+      }
+  }
+
+  void addConjunction(const vector<string> &terms)
+  {
+    try
+      {
+	addLogicalMatchers(terms, sd_journal_add_conjunction);
+      }
+    catch (runtime_error& e)
+      {
+	throw runtime_error("failed to add conjunction: "s + string{e.what()});
+      }
   }
 };
 
@@ -107,8 +219,19 @@ private:
   }
 
 public:
-  sd_journal_wrap():journal{}{};
-  sd_journal_wrap(string path):journal{path}{};
+  sd_journal_wrap(int flags = 0):
+    journal{flags}{};
+  sd_journal_wrap(string path, int flags = 0):
+    journal{path,flags}{};
+  sd_journal_wrap(sdj_opener::vecstr &&paths, int flags = 0):
+    journal{move(paths),flags}{};
+
+  sd_journal_wrap(sdj_opener::flagList fl):
+    journal{fl}{};
+  sd_journal_wrap(string path, sdj_opener::flagList fl):
+    journal{path,fl}{};
+  sd_journal_wrap(sdj_opener::vecstr &&paths, sdj_opener::flagList fl):
+    journal{move(paths),fl}{};
 
   sd_journal_wrap(const sd_journal_wrap&) = delete;
   sd_journal_wrap& operator=(const sd_journal_wrap&) = delete;
@@ -184,9 +307,9 @@ public:
     return ret;
   }
 
-  void addExactMessageMatch(string text)
+  void addExactMessageMatch(string text, string field = messageLiteral)
   {
-    journal.addExactMatch(text);
+    journal.addExactMatch(text, field);
   }
 
   void removeMatches()
@@ -213,6 +336,17 @@ public:
     journal.primeJournal();
     return ret;
   }
+
+  void addDisjunction(const vector<string> &terms)
+  {
+    journal.addDisjunction(terms);
+  }
+
+    void addConjunction(const vector<string> &terms)
+  {
+    journal.addConjunction(terms);
+  }
+
 };
 
 class restServer {

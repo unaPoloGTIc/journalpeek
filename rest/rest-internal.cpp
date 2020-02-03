@@ -36,7 +36,7 @@ handlersMap jdwrapper{
      [](web::http::http_request req, web::json::value jvals) {
        auto rep = web::json::value::object();
        string val1{jvals["val1"].as_string()};
-       //do somwthing with val1
+       //do something with val1
        rep["resp1"] = web::json::value::string("resp1"s);
        req.reply(web::http::status_codes::OK, rep).wait();
        return;
