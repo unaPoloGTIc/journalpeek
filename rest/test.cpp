@@ -22,17 +22,18 @@ using namespace std;
 class Sdj_raii : public ::testing::Test {
 protected:
   sd_journal_raii tst;
+
 public:
-  Sdj_raii():tst{"./testdata/"s}{}
+  Sdj_raii() : tst{"./testdata/"s} {}
   ~Sdj_raii() {}
 };
 
 TEST_F(Sdj_raii, ctor) {
-  //Make sure that these break the build
-  //auto bad1{tst};
-  //sd_journal_raii bad2{}; bad2 = tst;
+  // Make sure that these break the build
+  // auto bad1{tst};
+  // sd_journal_raii bad2{}; bad2 = tst;
   ASSERT_THROW(sd_journal_raii bad3{"./no/such/dir"};, runtime_error);
-  ASSERT_THROW(sd_journal_raii bad4{"./"};, runtime_error);//"Empty journal"
+  ASSERT_THROW(sd_journal_raii bad4{"./"};, runtime_error); //"Empty journal"
 }
 
 class none : public ::testing::Test {
@@ -40,16 +41,22 @@ protected:
 public:
 };
 
-//TODO: replace testdata so that we could test ctor with it.
+// TODO: replace testdata so that we could test ctor with it.
 TEST_F(none, oringFlags) {
-  ASSERT_EQ(sdj_opener::flagsToInt({}),0);
-  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::LOCAL}), SD_JOURNAL_LOCAL_ONLY);
-  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::RUNTIME}), SD_JOURNAL_RUNTIME_ONLY);
-  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::SYSTEM}), SD_JOURNAL_SYSTEM);
-  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::USER}), SD_JOURNAL_CURRENT_USER);
-  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::OS_ROOT}), SD_JOURNAL_OS_ROOT);
+  ASSERT_EQ(sdj_opener::flagsToInt({}), 0);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::LOCAL}),
+            SD_JOURNAL_LOCAL_ONLY);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::RUNTIME}),
+            SD_JOURNAL_RUNTIME_ONLY);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::SYSTEM}),
+            SD_JOURNAL_SYSTEM);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::USER}),
+            SD_JOURNAL_CURRENT_USER);
+  ASSERT_EQ(sdj_opener::flagsToInt({sdj_opener::openFlags::OS_ROOT}),
+            SD_JOURNAL_OS_ROOT);
 
-  auto res{sdj_opener::flagsToInt({sdj_opener::openFlags::OS_ROOT, sdj_opener::openFlags::SYSTEM})};
+  auto res{sdj_opener::flagsToInt(
+      {sdj_opener::openFlags::OS_ROOT, sdj_opener::openFlags::SYSTEM})};
   ASSERT_EQ(res, SD_JOURNAL_OS_ROOT | SD_JOURNAL_SYSTEM);
 
   ::testing::StaticAssertTypeEq<decltype(res), int>();
@@ -66,19 +73,20 @@ TEST_F(none, vecstrConv) {
   ASSERT_STREQ(s2.c_str(), dest[1]);
   ASSERT_STREQ(s3.c_str(), dest[2]);
 
-  //TODO type assertion for sdj_opener::vecstrConv
+  // TODO type assertion for sdj_opener::vecstrConv
 }
 
 TEST_F(none, vecstrCtor) {
   sd_journal_wrap tst1{vector<string>{"./testdata/testlog.journal"s}};
 }
 
-//To be updated alongside testdata
+// To be updated alongside testdata
 class Sdj_wrap : public ::testing::Test {
 protected:
   sd_journal_wrap tst;
+
 public:
-  Sdj_wrap():tst{"./testdata/"s}{}
+  Sdj_wrap() : tst{"./testdata/"s} {}
   ~Sdj_wrap() {}
 };
 
@@ -86,10 +94,9 @@ TEST_F(Sdj_wrap, vecAll) {
   auto v{tst.vec_all()};
   ASSERT_EQ(v.size(), 60);
   ASSERT_EQ(v[0].size(), 29);
-  ASSERT_TRUE(any_of(v[0].cbegin(),
-		     v[0].cend(),
-		     [](auto i)
-		     {return i=="_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s;}));
+  ASSERT_TRUE(any_of(v[0].cbegin(), v[0].cend(), [](auto i) {
+    return i == "_BOOT_ID=3ebd06f1166c461bbfcd3028da1cf2c2"s;
+  }));
 }
 
 TEST_F(Sdj_wrap, vecMsgs) {
@@ -138,10 +145,9 @@ TEST_F(Sdj_wrap, resetMatch) {
 TEST_F(Sdj_wrap, fields) {
   auto v{tst.fieldnames()};
   ASSERT_EQ(v.size(), 42);
-  ASSERT_TRUE(any_of(v.cbegin(),
-		     v.cend(),
-		     [](auto i)
-		     {return i=="_SOURCE_REALTIME_TIMESTAMP"s;}));
+  ASSERT_TRUE(any_of(v.cbegin(), v.cend(), [](auto i) {
+    return i == "_SOURCE_REALTIME_TIMESTAMP"s;
+  }));
 }
 
 TEST_F(Sdj_wrap, subjournalSize) {
@@ -154,21 +160,21 @@ TEST_F(Sdj_wrap, subjournalContentZerooffset) {
   int offset{0}, pagesize{10};
   auto v{tst.subJournal(offset, pagesize)};
   auto all{tst.vec_msgs()};
-  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin()+offset));
+  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin() + offset));
 }
 
 TEST_F(Sdj_wrap, subjournalContentPositiveoffset) {
   int offset{10}, pagesize{10};
   auto v{tst.subJournal(offset, pagesize)};
   auto all{tst.vec_msgs()};
-  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin()+offset));
+  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin() + offset));
 }
 
 TEST_F(Sdj_wrap, disjunction) {
   int msgCount{1}, exeCount{8};
   tst.addExactMessageMatch("daemon start"s, "MESSAGE");
   auto v1{tst.vec_msgs()};
-  ASSERT_EQ(v1.size(),msgCount );
+  ASSERT_EQ(v1.size(), msgCount);
   tst.removeMatches();
 
   tst.addExactMessageMatch("/usr/bin/dbus-daemon"s, "_EXE");
@@ -180,17 +186,17 @@ TEST_F(Sdj_wrap, disjunction) {
   tst.addDisjunction(v);
   tst.addExactMessageMatch("daemon start"s, "MESSAGE");
   auto m{tst.vec_msgs()};
-  ASSERT_GE(m.size(), max(exeCount,msgCount));//TODO: this reveales a bug!
-  for (auto i: m)
-    cout << i << endl;//TODO: 'daemon start' shows twice
-  cout << m.size() << endl; //TODO: why not exeCount+msgCount
+  ASSERT_GE(m.size(), max(exeCount, msgCount)); // TODO: this reveales a bug!
+  for (auto i : m)
+    cout << i << endl;      // TODO: 'daemon start' shows twice
+  cout << m.size() << endl; // TODO: why not exeCount+msgCount
 }
 
 TEST_F(Sdj_wrap, conjunction) {
   int msgCount{1}, bootCount{60};
   tst.addExactMessageMatch("daemon start"s, "MESSAGE");
   auto v1{tst.vec_msgs()};
-  ASSERT_EQ(v1.size(),msgCount );
+  ASSERT_EQ(v1.size(), msgCount);
   tst.removeMatches();
 
   tst.addExactMessageMatch("3ebd06f1166c461bbfcd3028da1cf2c2"s, "_BOOT_ID");
@@ -202,13 +208,13 @@ TEST_F(Sdj_wrap, conjunction) {
   tst.addConjunction(v);
   tst.addExactMessageMatch("daemon start"s, "MESSAGE");
   auto m{tst.vec_msgs()};
-  ASSERT_EQ(m.size(), min(bootCount,msgCount));
+  ASSERT_EQ(m.size(), min(bootCount, msgCount));
 }
 
-//TODOs: add tests for:
-//regex search
+// TODOs: add tests for:
+// regex search
 
-//TODO: unify with others and singletonify
+// TODO: unify with others and singletonify
 class globalRaii {
 public:
   globalRaii() { curl_global_init(CURL_GLOBAL_ALL); }
@@ -217,7 +223,7 @@ public:
 
 int main(int argc, char **argv) {
   globalRaii init{};
-  //TODO: generate testdata journal.
+  // TODO: generate testdata journal.
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

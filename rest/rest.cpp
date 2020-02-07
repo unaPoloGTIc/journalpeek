@@ -2,12 +2,12 @@
 
 using namespace std;
 
-extern handlersMap jdwrapper;//TODO: nuke
+extern handlersMap jdwrapper; // TODO: nuke
 
-int main()
-{
-  //handlersMap& endpointsRef{jdwrapper};
+int main() {
+  // handlersMap& endpointsRef{jdwrapper};
   restServer s(jdwrapper, "6666"s);
-  while (true){/*TODO: be nicer here*/}
+  while (true) { /*TODO: be nicer here*/
+  }
   return 0;
 }
