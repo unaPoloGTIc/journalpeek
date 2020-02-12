@@ -122,6 +122,17 @@ TEST_F(Sdj_wrap, vecMsgsFilterIgnoreCase) {
   ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
 }
 
+TEST_F(Sdj_wrap, vecMsgsRegexMultiple) {
+  auto v{tst.vec_msgs("li[tupnib]{6} error"s)};
+  ASSERT_EQ(v.size(), 6);
+}
+
+TEST_F(Sdj_wrap, vecMsgsRegexIgnoreCase) {
+  auto v{tst.vec_msgs("s[DETRAT]{6} Network Manager"s, true)};
+  ASSERT_EQ(v.size(), 1);
+  ASSERT_EQ(v[0], "Started Network Manager Script Dispatcher Service."s);
+}
+
 TEST_F(Sdj_wrap, vecMsgsResetAfterMatch) {
   auto v{tst.vec_msgs()};
   tst.addExactMessageMatch("daemon start"s);

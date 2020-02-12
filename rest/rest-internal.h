@@ -13,6 +13,7 @@ extern "C" {
 #include <memory>
 #include <pplx/pplxtasks.h>
 #include <random>
+#include <regex>
 #include <sstream>
 #include <string>
 
@@ -224,8 +225,14 @@ public:
   // TODO: overload for regex
   vector<string> vec_msgs(string filter = ""s, bool ignoreCase = false) {
     vector<string> ret;
+    auto opts{regex_constants::ECMAScript | regex_constants::optimize};
+    if (ignoreCase)
+      opts |= regex_constants::icase;
+    regex reg{filter, opts};
+
     journal.primeJournal();
-    auto recHandler = [&ret, filter, ignoreCase](sd_journal_raii &journal) {
+
+    auto regHandler = [&ret, &reg](sd_journal_raii &journal) {
       const char *d;
       size_t l;
       if (auto r = sd_journal_get_data(journal, messageLiteral.c_str(),
@@ -238,16 +245,12 @@ public:
 
       string msg{d};
       removeFieldName(msg);
-      string msgCpy{msg}, filterCpy{filter};
-      if (ignoreCase) {
-        auto lowerize = [](auto &i) { i = tolower(i); };
-        for_each(msg.begin(), msg.end(), lowerize);
-        for_each(filterCpy.begin(), filterCpy.end(), lowerize);
+      if (std::regex_search(msg, reg)) {
+        ret.push_back(msg);
       }
-      if (msg.find(filterCpy) != msg.npos)
-        ret.push_back(move(msgCpy));
     };
-    recordIterator(recHandler);
+
+    recordIterator(regHandler);
     journal.primeJournal();
     return ret; // moves
   }
