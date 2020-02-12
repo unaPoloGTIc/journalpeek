@@ -222,8 +222,46 @@ TEST_F(Sdj_wrap, conjunction) {
   ASSERT_EQ(m.size(), min(bootCount, msgCount));
 }
 
-// TODOs: add tests for:
-// regex search
+class restTester : public ::testing::Test {
+protected:
+  restServer tst;
+  http_client client;
+
+  json::value make_request(string path,
+                         json::value const &jvalue) {
+  json::value ret;
+  client.request(methods::GET, path, jvalue)
+      .then([](http_response response) {
+        if (response.status_code() == status_codes::OK) {
+          return response.extract_json();
+        }
+        return pplx::task_from_result(json::value());
+      })
+      .then([&ret](pplx::task<json::value> previousTask) {
+        ret = previousTask.get();
+      })
+      .wait();
+  return ret;
+}
+public:
+  restTester() : tst() , client("http://localhost:6666/"){}
+  ~restTester() {}
+};
+
+TEST_F(restTester, ctor) {
+
+}
+
+TEST_F(restTester, getAll) {
+  auto jval = json::value::object();
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r = j["resp"].as_array();
+  ASSERT_EQ(r.size(), 60);
+  for (auto& v : r)
+    ASSERT_NO_THROW(v.as_string());
+}
+
+//TODO: test rest with match, offset, size
 
 // TODO: unify with others and singletonify
 class globalRaii {

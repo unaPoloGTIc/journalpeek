@@ -222,7 +222,6 @@ public:
     msg = msg.substr(msg.find('=') + 1, msg.npos);
   }
 
-  // TODO: overload for regex
   vector<string> vec_msgs(string filter = ""s, bool ignoreCase = false) {
     vector<string> ret;
     auto opts{regex_constants::ECMAScript | regex_constants::optimize};
@@ -298,6 +297,8 @@ public:
   }
 };
 
+extern handlersMap jdwrapper;
+
 class restServer {
 private:
   web::http::experimental::listener::http_listener s;
@@ -305,10 +306,5 @@ private:
 public:
   ~restServer();
 
-  static bool verifyToken(string token) // TODO AF
-  {
-    return true;
-  }
-
-  restServer(handlersMap endpoints, string port);
+  restServer(handlersMap endpoints = jdwrapper, string port = "6666"s);
 };
