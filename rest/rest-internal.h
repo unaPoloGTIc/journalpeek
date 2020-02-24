@@ -102,6 +102,8 @@ public:
 extern string messageLiteral;
 
 class sd_journal_raii : public sdj_opener {
+  string headCur;
+  string tailCur;
 
   void addLogicalMatchers(const vector<string> &terms,
                           function<int(sd_journal *)> delegate) {
@@ -114,30 +116,105 @@ class sd_journal_raii : public sdj_opener {
     primeJournal();
   }
 
+  const string
+  getHead() { // TODO: consider saving and restoring current position
+    if (int ret{sd_journal_seek_head(raw)}; ret < 0)
+      throw runtime_error("Failed to seek head cursor: "s +
+                          string{strerror(-ret)});
+    if (auto ret{sd_journal_next(raw)}; ret < 1)
+      throw runtime_error("Journal empty? "s + string{strerror(-ret)});
+    return cursor();
+  }
+  const string getTail() { // TODO: unify with getHead()
+    if (int ret{sd_journal_seek_tail(raw)}; ret < 0)
+      throw runtime_error("Failed to seek tail cursor: "s +
+                          string{strerror(-ret)});
+    if (auto ret{sd_journal_previous(raw)}; ret < 1)
+      throw runtime_error("Journal empty? "s + string{strerror(-ret)});
+    return cursor();
+  }
+
 public:
-  void primeJournal(int offset = 1) {
+  void primeJournal() { // disambiguate
+    primeJournal(1);
+  }
+
+  void primeJournal(unsigned int offset) {
     if (auto ret{sd_journal_seek_head(raw)}; ret < 0)
       throw runtime_error("Failed to reset to journal head");
-    if (auto ret{sd_journal_next_skip(raw, offset)}; ret < offset)
+    if (auto ret{sd_journal_next_skip(raw, offset)};
+        ret < static_cast<int>(offset))
       throw runtime_error("Journal empty or shorter than offset");
     else if (ret < 0)
       throw runtime_error("Error during first read");
   }
 
-  sd_journal_raii(int flags = 0) : sdj_opener(flags) { primeJournal(); }
-  sd_journal_raii(sdj_opener::flagList fl) : sdj_opener(fl) { primeJournal(); }
-  sd_journal_raii(string path, int flags = 0) : sdj_opener(path, flags) {
+  void primeJournal(const string &cursor, bool backwards) {
+    if (cursor == ""s)
+      return primeJournal();
+    if (auto ret{sd_journal_seek_cursor(raw, cursor.c_str())}; ret < 0)
+      throw runtime_error("Failed to reset journal to cursor");
+
+    if (backwards) // either success or EOF, no error.
+      sd_journal_previous(raw);
+    else
+      sd_journal_next(raw);
+  }
+
+  string cursor() {
+    char *d;
+    string tmp{};
+    auto ret{sd_journal_get_cursor(raw, &d)};
+
+    if (ret < 0) {
+      if (ret == -ENOMEM)
+        throw runtime_error(
+            "Failed to get cursor, don't know if need to free()");
+      throw runtime_error("Failed to get cursor");
+    }
+
+    try {
+      tmp = string{d};
+    } catch (...) {
+      free(d); // TODO: add raii object
+      throw;
+    }
+    free(d);
+    return tmp;
+  }
+
+  bool testCursor(string cur) {
+    if (int ret{sd_journal_test_cursor(raw, cur.c_str())}; ret < 0)
+      throw runtime_error("Failed to compare cursors: "s +
+                          string{strerror(-ret)});
+    else
+      return ret > 0;
+  }
+
+  sd_journal_raii(int flags = 0)
+      : sdj_opener(flags), headCur{getHead()}, tailCur{getTail()} {
     primeJournal();
   }
-  sd_journal_raii(string path, sdj_opener::flagList fl) : sdj_opener(path, fl) {
+  sd_journal_raii(sdj_opener::flagList fl)
+      : sdj_opener(fl), headCur{getHead()}, tailCur{getTail()} {
     primeJournal();
   }
+  sd_journal_raii(string path, int flags = 0)
+      : sdj_opener(path, flags), headCur{getHead()}, tailCur{getTail()} {
+    primeJournal();
+  }
+  sd_journal_raii(string path, sdj_opener::flagList fl)
+      : sdj_opener(path, fl), headCur{getHead()}, tailCur{getTail()} {
+    primeJournal();
+  }
+
   sd_journal_raii(sdj_opener::vecstr &&paths, int flags = 0)
-      : sdj_opener(move(paths), flags) {
+      : sdj_opener(move(paths), flags), headCur{getHead()}, tailCur{getTail()} {
     primeJournal();
   }
+
   sd_journal_raii(sdj_opener::vecstr &&paths, sdj_opener::flagList fl)
-      : sdj_opener(move(paths), fl) {
+      : sdj_opener(move(paths), fl), headCur{getHead()}, tailCur{getTail()} {
     primeJournal();
   }
 
@@ -173,9 +250,12 @@ public:
       throw runtime_error("failed to add conjunction: "s + string{e.what()});
     }
   }
+
+  string headCursor() { return headCur; }
+  string tailCursor() { return tailCur; }
 };
 
-class sd_journal_wrap {
+class sd_journal_wrap { // TODO: add iterator, stream.
 private:
   sd_journal_raii journal;
 
@@ -183,6 +263,44 @@ private:
   void recordIterator(recordCallback rcb) {
     SD_JOURNAL_FOREACH(journal) { rcb(journal); }
   }
+
+  string get_current_msg() {
+    const char *d;
+    size_t l;
+    if (auto r = sd_journal_get_data(journal, messageLiteral.c_str(),
+                                     reinterpret_cast<const void **>(&d), &l);
+        r < 0) {
+      return "Failed to read message: "s + string{strerror(-r)} + "\n";
+    }
+
+    string msg{d};
+    removeFieldName(msg);
+    return msg;
+  }
+
+  using msgCallback = function<bool(const string &)>;
+  using advance_type = function<int(sd_journal *)>;
+
+  tuple<string, bool> find_if_not(string begin, msgCallback mcb,
+                                  bool backwards = false) {
+    journal.primeJournal(begin, backwards);
+
+    int advanceTmp;
+    bool cbTmp;
+    auto advance{backwards ? sd_journal_previous : sd_journal_next};
+    while (cbTmp = mcb(get_current_msg()), advanceTmp = advance(journal),
+           advanceTmp && cbTmp) {
+    }
+
+    return make_tuple(journal.cursor(), !advanceTmp);
+  }
+
+  function<regex(string, bool)> regWrap{[](string filter, bool ignoreCase) {
+    auto opts{regex_constants::ECMAScript | regex_constants::optimize};
+    if (ignoreCase)
+      opts |= regex_constants::icase;
+    return regex{filter, opts};
+  }};
 
 public:
   sd_journal_wrap(int flags = 0) : journal{flags} {};
@@ -222,16 +340,13 @@ public:
     msg = msg.substr(msg.find('=') + 1, msg.npos);
   }
 
-  vector<string> vec_msgs(string filter = ""s, bool ignoreCase = false) {
+  vector<string> vec_msgs(string filter = ""s,
+                          bool ignoreCase = false) { // TODO: page-ify
     vector<string> ret;
-    auto opts{regex_constants::ECMAScript | regex_constants::optimize};
-    if (ignoreCase)
-      opts |= regex_constants::icase;
-    regex reg{filter, opts};
-
-    journal.primeJournal();
+    auto reg{regWrap(filter, ignoreCase)};
 
     auto regHandler = [&ret, &reg](sd_journal_raii &journal) {
+      // TODO: use get_current_msg() instead
       const char *d;
       size_t l;
       if (auto r = sd_journal_get_data(journal, messageLiteral.c_str(),
@@ -244,7 +359,7 @@ public:
 
       string msg{d};
       removeFieldName(msg);
-      if (std::regex_search(msg, reg)) {
+      if (regex_search(msg, reg)) {
         ret.push_back(msg);
       }
     };
@@ -252,6 +367,27 @@ public:
     recordIterator(regHandler);
     journal.primeJournal();
     return ret; // moves
+  }
+
+  tuple<vector<string>, string, bool>
+  paged_msgs(string begin = ""s, long unsigned int pagesize = 100,
+             string filter = ""s, bool ignoreCase = false,
+             bool backwards = false) {
+    vector<string> ret_vec{};
+    auto reg{regWrap(filter, ignoreCase)};
+
+    auto countingMsgHandler = [&ret_vec, &reg, pagesize](const string &msg) {
+      if (regex_search(msg, reg))
+        ret_vec.push_back(msg);
+
+      return ret_vec.size() < pagesize;
+    };
+
+    if (pagesize == 0)
+      return make_tuple(ret_vec, begin, journal.testCursor(begin));
+
+    auto [end, eof] = this->find_if_not(begin, countingMsgHandler, backwards);
+    return make_tuple(ret_vec, end, eof);
   }
 
   vector<string> fieldnames() {
@@ -272,6 +408,7 @@ public:
   vector<string> subJournal(int offset, int pagesize = 100) {
     vector<string> ret;
     auto getOne{[](sd_journal_raii &journal, vector<string> &ret) {
+      // TODO: use get_current_msg() instead
       const char *d;
       size_t l;
       int get{sd_journal_get_data(journal, messageLiteral.c_str(),

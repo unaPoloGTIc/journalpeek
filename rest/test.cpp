@@ -181,6 +181,100 @@ TEST_F(Sdj_wrap, subjournalContentPositiveoffset) {
   ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin() + offset));
 }
 
+TEST_F(Sdj_wrap, pagedMsgsSize) {
+  int pagesize{10};
+  auto [vec, cur, eof] = tst.paged_msgs(""s, pagesize);
+  ASSERT_EQ(pagesize, vec.size());
+}
+
+TEST_F(Sdj_wrap, pagedMsgsRepeated) {
+  int pagesize{10};
+  string prevCur{""s};
+  for (int i{0}; i < 5; i++) {
+    auto [vec, cur, eof] = tst.paged_msgs(prevCur, pagesize);
+    prevCur = cur;
+    ASSERT_EQ(pagesize, vec.size());
+  }
+}
+
+TEST_F(Sdj_wrap, pagedMsgsRemainder) {
+  int pagesize{35};
+  auto [vec1, cur, eof1] = tst.paged_msgs(""s, pagesize);
+  ASSERT_EQ(pagesize, vec1.size());
+  auto [vec2, unused, eof2] = tst.paged_msgs(cur, pagesize);
+  ASSERT_EQ(60 - pagesize, vec2.size());
+}
+
+TEST_F(Sdj_wrap, pagedMsgsReverse) {
+  int pagesize{10};
+  auto [vec1, cur, eof1] = tst.paged_msgs(""s, pagesize);
+  auto [vec2, unused, eof2] = tst.paged_msgs(cur, pagesize, "", false, true);
+  ASSERT_EQ(vec1.size(), vec2.size());
+  ASSERT_TRUE(equal(vec1.begin() + 1, vec1.end(), vec2.rbegin()));
+}
+
+TEST_F(Sdj_wrap, pagedMsgsTinyPage1) {
+  int pagesize{1}, prevSize{0};
+  string prevCur{""s};
+  int i{0};
+  auto getEof = [](sd_journal_wrap &tst, string &prevCur, int pagesize,
+                   int &i) {
+    auto [vec, cur, eof]{tst.paged_msgs(prevCur, pagesize)};
+    prevCur = cur;
+    i += vec.size();
+    return eof;
+  };
+  while (!getEof(tst, prevCur, pagesize, i)) {
+  }
+  ASSERT_EQ(i, 60);
+}
+
+TEST_F(Sdj_wrap, pagedMsgsTinyPage2) {
+  for (int pagesize{1}; pagesize <= 10; pagesize++) {
+    sd_journal_wrap tst{"./testdata/"s};
+    int prevSize{0};
+    string prevCur{""s};
+    int i{0};
+    bool prevEof;
+    do {
+      auto [vec, cur, eof] = tst.paged_msgs(prevCur, pagesize);
+      prevCur = cur;
+      prevSize = vec.size();
+      prevEof = eof;
+      i += vec.size();
+    } while (!prevEof);
+    ASSERT_EQ(i, 60);
+  }
+}
+
+TEST_F(Sdj_wrap, pagedMsgsHugePage) {
+  int pagesize{1000};
+  auto [vec, cur, eof] = tst.paged_msgs(""s, pagesize);
+  ASSERT_EQ(vec.size(), 60);
+}
+/*
+TEST_F(Sdj_wrap, pagedMsgsCursor) {
+}
+
+TEST_F(Sdj_wrap, pagedMsgsFilter) {
+}
+
+TEST_F(Sdj_wrap, pagedMsgs) {
+}
+
+TEST_F(Sdj_wrap, pagedMsgs) {
+}
+
+TEST_F(Sdj_wrap, pagedMsgs) {
+}
+*/
+TEST_F(Sdj_wrap, subjournalMatchesPagedMsgs) {
+  int offset{10}, pagesize{10};
+  auto v{tst.subJournal(offset, pagesize)};
+  auto all{tst.vec_msgs()};
+  ASSERT_TRUE(equal(v.cbegin(), v.cend(), all.cbegin() + offset));
+}
+
 TEST_F(Sdj_wrap, disjunction) {
   int msgCount{1}, exeCount{8};
   tst.addExactMessageMatch("daemon start"s, "MESSAGE");
@@ -227,41 +321,40 @@ protected:
   restServer tst;
   http_client client;
 
-  json::value make_request(string path,
-                         json::value const &jvalue) {
-  json::value ret;
-  client.request(methods::GET, path, jvalue)
-      .then([](http_response response) {
-        if (response.status_code() == status_codes::OK) {
-          return response.extract_json();
-        }
-        return pplx::task_from_result(json::value());
-      })
-      .then([&ret](pplx::task<json::value> previousTask) {
-        ret = previousTask.get();
-      })
-      .wait();
-  return ret;
-}
+  json::value make_request(string path, json::value const &jvalue) {
+    json::value ret;
+    client.request(methods::GET, path, jvalue)
+        .then([](http_response response) {
+          if (response.status_code() == status_codes::OK) {
+            return response.extract_json();
+          }
+          return pplx::task_from_result(json::value());
+        })
+        .then([&ret](pplx::task<json::value> previousTask) {
+          ret = previousTask.get();
+        })
+        .wait();
+    return ret;
+  }
+
 public:
-  restTester() : tst() , client("http://localhost:6666/"){}
+  restTester() : tst(), client("http://localhost:6666/") {}
   ~restTester() {}
 };
 
-TEST_F(restTester, ctor) {
-
-}
+TEST_F(restTester, ctor) {}
 
 TEST_F(restTester, getAll) {
   auto jval = json::value::object();
   auto j{make_request("/v1/paged_search", jval)};
   auto r = j["resp"].as_array();
   ASSERT_EQ(r.size(), 60);
-  for (auto& v : r)
+  for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
 }
 
-//TODO: test rest with match, offset, size
+// TODO: test rest with match, offset, size
+// TODO: test primejournal(), cursor(), paged_msgs()
 
 // TODO: unify with others and singletonify
 class globalRaii {
