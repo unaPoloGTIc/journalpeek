@@ -252,22 +252,64 @@ TEST_F(Sdj_wrap, pagedMsgsHugePage) {
   auto [vec, cur, eof] = tst.paged_msgs(""s, pagesize);
   ASSERT_EQ(vec.size(), 60);
 }
-/*
+
 TEST_F(Sdj_wrap, pagedMsgsCursor) {
+  int pagesize{5};
+  auto [vec, cur, eof] = tst.paged_msgs(""s, pagesize);
+  auto [vec1a, cur1a, eof1a] = tst.paged_msgs(cur, pagesize);
+  auto [vec1b, cur1b, eof1b] = tst.paged_msgs(cur1a, pagesize);
+  auto [vec2, cur2, eof2] = tst.paged_msgs(cur, 2 * pagesize);
+
+  ASSERT_TRUE(equal(vec1a.cbegin(), vec1a.cend(), vec2.cbegin()));
+  ASSERT_TRUE(
+      equal(vec1b.cbegin(), vec1b.cend(), vec2.cbegin() + vec1a.size()));
 }
 
 TEST_F(Sdj_wrap, pagedMsgsFilter) {
+  int pagesize{4};
+
+  auto [vec1a, cur1a, eof1a] =
+      tst.paged_msgs("", pagesize, "li[tupnib]{6} error"s);
+  auto [vec1b, cur1b, eof1b] =
+      tst.paged_msgs(cur1a, pagesize, "li[tupnib]{6} error"s);
+  auto [vec2, cur2, eof2] =
+      tst.paged_msgs("", 2 * pagesize, "li[tupnib]{6} error"s);
+
+  ASSERT_TRUE(equal(vec1a.cbegin(), vec1a.cend(), vec2.cbegin()));
+  ASSERT_TRUE(
+      equal(vec1b.cbegin(), vec1b.cend(), vec2.cbegin() + vec1a.size()));
 }
 
-TEST_F(Sdj_wrap, pagedMsgs) {
+TEST_F(Sdj_wrap, pagedMsgsFilterCaseInsensitive) {
+  int pagesize{4};
+
+  auto [vec1a, cur1a, eof1a] =
+      tst.paged_msgs("", pagesize, "li[TUPNIB]{6} error"s, true);
+  auto [vec1b, cur1b, eof1b] =
+      tst.paged_msgs(cur1a, pagesize, "li[TUPNIB]{6} error"s, true);
+  auto [vec2, cur2, eof2] =
+      tst.paged_msgs("", 2 * pagesize, "li[TUPNIB]{6} error"s, true);
+
+  ASSERT_TRUE(equal(vec1a.cbegin(), vec1a.cend(), vec2.cbegin()));
+  ASSERT_TRUE(
+      equal(vec1b.cbegin(), vec1b.cend(), vec2.cbegin() + vec1a.size()));
+  ASSERT_TRUE(eof1b);
+  ASSERT_TRUE(eof2);
 }
 
-TEST_F(Sdj_wrap, pagedMsgs) {
+TEST_F(Sdj_wrap, pagedMsgsBackwards) {
+  int pagesize{10};
+
+  auto [vec1, cur1, eof1] =
+      tst.paged_msgs("", pagesize, "li[TUPNIB]{6} error"s, true, false);
+  auto [vec2, cur2, eof2] =
+      tst.paged_msgs(cur1, pagesize, "li[TUPNIB]{6} error"s, true, true);
+
+  ASSERT_TRUE(equal(vec1.cbegin(), vec1.cend(), vec2.crbegin()));
+  ASSERT_TRUE(eof1);
+  ASSERT_TRUE(eof2);
 }
 
-TEST_F(Sdj_wrap, pagedMsgs) {
-}
-*/
 TEST_F(Sdj_wrap, subjournalMatchesPagedMsgs) {
   int offset{10}, pagesize{10};
   auto v{tst.subJournal(offset, pagesize)};
