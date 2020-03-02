@@ -214,7 +214,7 @@ TEST_F(Sdj_wrap, pagedMsgsReverse) {
 }
 
 TEST_F(Sdj_wrap, pagedMsgsTinyPage1) {
-  int pagesize{1}, prevSize{0};
+  int pagesize{1};
   string prevCur{""s};
   int i{0};
   auto getEof = [](sd_journal_wrap &tst, string &prevCur, int pagesize,
@@ -232,14 +232,12 @@ TEST_F(Sdj_wrap, pagedMsgsTinyPage1) {
 TEST_F(Sdj_wrap, pagedMsgsTinyPage2) {
   for (int pagesize{1}; pagesize <= 10; pagesize++) {
     sd_journal_wrap tst{"./testdata/"s};
-    int prevSize{0};
     string prevCur{""s};
     int i{0};
     bool prevEof;
     do {
       auto [vec, cur, eof] = tst.paged_msgs(prevCur, pagesize);
       prevCur = cur;
-      prevSize = vec.size();
       prevEof = eof;
       i += vec.size();
     } while (!prevEof);
@@ -308,6 +306,12 @@ TEST_F(Sdj_wrap, pagedMsgsBackwards) {
   ASSERT_TRUE(equal(vec1.cbegin(), vec1.cend(), vec2.crbegin()));
   ASSERT_TRUE(eof1);
   ASSERT_TRUE(eof2);
+}
+
+TEST_F(Sdj_wrap, pagedMsgsWithExactMatch) {
+  tst.addExactMessageMatch("/usr/bin/dbus-daemon"s, "_EXE");
+  auto [vec, cur, eof] = tst.paged_msgs(""s, 100, ""s, false, false);
+  ASSERT_EQ(8, vec.size());
 }
 
 TEST_F(Sdj_wrap, subjournalMatchesPagedMsgs) {
@@ -386,17 +390,102 @@ public:
 
 TEST_F(restTester, ctor) {}
 
-TEST_F(restTester, getAll) {
+TEST_F(restTester, getAllDeprecated) {
   auto jval = json::value::object();
-  auto j{make_request("/v1/paged_search", jval)};
+  auto j{make_request("/v0/paged_search", jval)};
   auto r = j["resp"].as_array();
   ASSERT_EQ(r.size(), 60);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
 }
 
-// TODO: test rest with match, offset, size
-// TODO: test primejournal(), cursor(), paged_msgs()
+TEST_F(restTester, getPagedAll) {
+  auto jval = json::value::object();
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r = j["items"].as_array();
+  ASSERT_EQ(r.size(), 60);
+  for (auto &v : r)
+    ASSERT_NO_THROW(v.as_string());
+  ASSERT_TRUE(j["eof"].as_bool());
+  ASSERT_EQ(j["end"].as_string(), "s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t=59d76ee02630a;x=c1d7bc7b603b7222"s);
+}
+
+TEST_F(restTester, getPagedParts) {
+  string cursor1{"s=19b3981824e3494f9d4060cd0bef1b34;i=c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=94fcea25d;t=59d76dbcebb3c;x=b6fc6d2bebefa440"};
+  string cursor2{"s=19b3981824e3494f9d4060cd0bef1b34;i=22;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=94fc40886;t=59d76dbc42165;x=1f96b57f9e051071"};
+  string cursorEnd{"s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t=59d76ee02630a;x=c1d7bc7b603b7222"};
+  int pagesize{11};
+
+  auto jval = json::value::object();
+  jval["pagesize"] = web::json::value::number(pagesize);
+
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r = j["items"].as_array();
+  ASSERT_EQ(r.size(), pagesize);
+  for (auto &v : r)
+    ASSERT_NO_THROW(v.as_string());
+  ASSERT_FALSE(j["eof"].as_bool());
+  ASSERT_EQ(j["end"].as_string(),cursor1);
+
+  jval = json::value::object();
+  jval["pagesize"] = web::json::value::number(2*pagesize);
+  jval["begin"] = web::json::value::string(cursor1);
+
+  j = make_request("/v1/paged_search", jval);
+  r = j["items"].as_array();
+  ASSERT_EQ(r.size(), 2*pagesize);
+  for (auto &v : r)
+    ASSERT_NO_THROW(v.as_string());
+  ASSERT_FALSE(j["eof"].as_bool());
+  ASSERT_EQ(j["end"].as_string(), cursor2);
+
+  jval = json::value::object();
+  jval["pagesize"] = web::json::value::number(10*pagesize);
+  jval["begin"] = web::json::value::string(cursor2);
+
+  j = make_request("/v1/paged_search", jval);
+  r = j["items"].as_array();
+  ASSERT_EQ(r.size(), 60 - 3*pagesize);
+  for (auto &v : r)
+    ASSERT_NO_THROW(v.as_string());
+  ASSERT_TRUE(j["eof"].as_bool());
+  ASSERT_EQ(j["end"].as_string(), cursorEnd);
+}
+
+TEST_F(restTester, getPagedReverse) {
+  auto jval = json::value::object();
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r1 = j["items"].as_array();
+
+  jval = json::value::object();
+  jval["backwards"] = web::json::value::boolean(true);
+  j = make_request("/v1/paged_search", jval);
+  auto r2 = j["items"].as_array();
+
+  vector<string> v1,v2;
+
+  for (auto i:r1)
+    v1.push_back(i.as_string());
+  for (auto i:r2)
+    v2.push_back(i.as_string());
+  ASSERT_TRUE(equal(v1.cbegin(), v1.cend(), v2.crbegin()));
+}
+
+TEST_F(restTester, getPagedRegex) {
+  auto jval = json::value::object();
+  jval["regex"] = web::json::value::string("li[tupnib]{6} error"s);
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r = j["items"].as_array();
+  ASSERT_EQ(r.size(), 6);
+}
+
+TEST_F(restTester, getPagedMatch) {
+  auto jval = json::value::object();
+  jval["match"] = web::json::value::string("_EXE=/usr/bin/dbus-daemon"s);
+  auto j{make_request("/v1/paged_search", jval)};
+  auto r = j["items"].as_array();
+  ASSERT_EQ(r.size(), 8);
+}
 
 // TODO: unify with others and singletonify
 class globalRaii {

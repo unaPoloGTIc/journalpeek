@@ -3,12 +3,12 @@
 string messageLiteral = "MESSAGE"s;
 
 handlersMap jdwrapper{
-      {"/v1/paged_search",
+      {"/v0/paged_search",
 	  [](web::http::http_request req, web::json::value jvals) {
 	    auto rep = web::json::value::object();
 	    sd_journal_wrap journal{"./testdata/"s};
-	    int offset{jvals.has_integer_field("offset")?jvals["offset"].as_integer():0};
-	    int size{jvals.has_integer_field("size")?jvals["size"].as_integer():0};
+	    //int offset{jvals.has_integer_field("offset")?jvals["offset"].as_integer():0};
+	    //int size{jvals.has_integer_field("size")?jvals["size"].as_integer():0};
 	    /* TODO:
 	    web::json::array exact{jvals.has_array_field("matches")?
 				   jvals["matches"].as_array():
@@ -30,6 +30,38 @@ handlersMap jdwrapper{
 	    req.reply(web::http::status_codes::OK, rep).wait();
 	    return;
 	  }},
+      {"/v1/paged_search",
+       [](web::http::http_request req, web::json::value jvals) {
+	 auto rep = web::json::value::object();
+	 sd_journal_wrap journal{"./testdata/"s};//sd_journal precludes multiple threads
+	 string begin{jvals.has_string_field("begin")?jvals["begin"].as_string():""s};
+	 int pagesize{jvals.has_integer_field("pagesize")?jvals["pagesize"].as_integer():100};
+
+	 if (jvals.has_string_field("match"))
+	   {
+	     auto tmp{jvals["match"].as_string()};
+	     if (auto loc{tmp.find('=')}; loc != tmp.npos)
+	       journal.addExactMessageMatch(tmp.substr(loc+1, tmp.npos), tmp.substr(0,loc));
+	     else
+	       journal.addExactMessageMatch(tmp);
+	   }
+
+	 string regex{jvals.has_string_field("regex")?jvals["regex"].as_string():""s};
+	 bool ignoreCase{jvals.has_boolean_field("ignore_case")?jvals["ignore_case"].as_bool():false};
+	 bool backwards{jvals.has_boolean_field("backwards")?jvals["backwards"].as_bool():false};
+	 auto [vec, end, eof] {journal.paged_msgs(begin, pagesize, regex, ignoreCase, backwards)};
+
+	 vector<web::json::value> allVals;
+	 for(const auto& m:vec)
+	   auto r = allVals.emplace_back(web::json::value::string(m));
+
+	 rep["items"] = web::json::value::array(allVals);
+	 rep["end"] = web::json::value::string(end);
+	 rep["eof"] = web::json::value::boolean(eof);
+	 req.reply(web::http::status_codes::OK, rep).wait();
+	 return;
+       }},
+
 };
 
 restServer::restServer(handlersMap endpoints, string port)

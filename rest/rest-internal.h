@@ -142,16 +142,30 @@ public:
   void primeJournal(unsigned int offset) {
     if (auto ret{sd_journal_seek_head(raw)}; ret < 0)
       throw runtime_error("Failed to reset to journal head");
-    if (auto ret{sd_journal_next_skip(raw, offset)};
-        ret < static_cast<int>(offset))
+    if (auto ret{sd_journal_next_skip(raw, offset)}; ret >= 0 && ret < static_cast<int>(offset))
       throw runtime_error("Journal empty or shorter than offset");
+    else if (ret < 0)
+      throw runtime_error("Error during first read");
+  }
+
+
+  void primeJournalEnd() {//TODO:unify
+    if (auto ret{sd_journal_seek_tail(raw)}; ret < 0)
+      throw runtime_error("Failed to reset to journal tail");
+    if (auto ret{sd_journal_previous(raw)}; ret == 0)
+      throw runtime_error("Journal empty");
     else if (ret < 0)
       throw runtime_error("Error during first read");
   }
 
   void primeJournal(const string &cursor, bool backwards) {
     if (cursor == ""s)
-      return primeJournal();
+      {
+      if (backwards)
+	return primeJournalEnd();
+      else
+	return  primeJournal();
+      }
     if (auto ret{sd_journal_seek_cursor(raw, cursor.c_str())}; ret < 0)
       throw runtime_error("Failed to reset journal to cursor");
 
