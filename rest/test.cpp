@@ -368,18 +368,11 @@ protected:
   http_client client;
 
   json::value make_request(string path, json::value const &jvalue) {
-    json::value ret;
-    client.request(methods::GET, path, jvalue)
-        .then([](http_response response) {
-          if (response.status_code() == status_codes::OK) {
-            return response.extract_json();
-          }
-          return pplx::task_from_result(json::value());
-        })
-        .then([&ret](pplx::task<json::value> previousTask) {
-          ret = previousTask.get();
-        })
-        .wait();
+    auto res = client.request(methods::GET, path, jvalue);
+    res.wait();
+    auto js = res.get().extract_json();
+    js.wait();
+    auto ret = js.get();
     return ret;
   }
 
