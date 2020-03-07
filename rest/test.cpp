@@ -161,6 +161,14 @@ TEST_F(Sdj_wrap, fields) {
   }));
 }
 
+TEST_F(Sdj_wrap, fieldUnique) {
+  auto v{tst.fieldUnique("_SOURCE_REALTIME_TIMESTAMP"s)};
+  ASSERT_EQ(v.size(), 28);
+  ASSERT_TRUE(any_of(v.cbegin(), v.cend(), [](auto i) {
+    return i == "_SOURCE_REALTIME_TIMESTAMP=1580508702424269"s;
+  }));
+}
+
 TEST_F(Sdj_wrap, subjournalSize) {
   int offset{10}, pagesize{10};
   auto v{tst.subJournal(offset, pagesize)};
@@ -400,13 +408,21 @@ TEST_F(restTester, getPagedAll) {
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
   ASSERT_TRUE(j["eof"].as_bool());
-  ASSERT_EQ(j["end"].as_string(), "s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t=59d76ee02630a;x=c1d7bc7b603b7222"s);
+  ASSERT_EQ(
+      j["end"].as_string(),
+      "s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t=59d76ee02630a;x=c1d7bc7b603b7222"s);
 }
 
 TEST_F(restTester, getPagedParts) {
-  string cursor1{"s=19b3981824e3494f9d4060cd0bef1b34;i=c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=94fcea25d;t=59d76dbcebb3c;x=b6fc6d2bebefa440"};
-  string cursor2{"s=19b3981824e3494f9d4060cd0bef1b34;i=22;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=94fc40886;t=59d76dbc42165;x=1f96b57f9e051071"};
-  string cursorEnd{"s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b=3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t=59d76ee02630a;x=c1d7bc7b603b7222"};
+  string cursor1{"s=19b3981824e3494f9d4060cd0bef1b34;i=c;b="
+                 "3ebd06f1166c461bbfcd3028da1cf2c2;m=94fcea25d;t=59d76dbcebb3c;"
+                 "x=b6fc6d2bebefa440"};
+  string cursor2{"s=19b3981824e3494f9d4060cd0bef1b34;i=22;b="
+                 "3ebd06f1166c461bbfcd3028da1cf2c2;m=94fc40886;t=59d76dbc42165;"
+                 "x=1f96b57f9e051071"};
+  string cursorEnd{"s=19b3981824e3494f9d4060cd0bef1b34;i=3c;b="
+                   "3ebd06f1166c461bbfcd3028da1cf2c2;m=962024a2a;t="
+                   "59d76ee02630a;x=c1d7bc7b603b7222"};
   int pagesize{11};
 
   auto jval = json::value::object();
@@ -418,27 +434,27 @@ TEST_F(restTester, getPagedParts) {
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
   ASSERT_FALSE(j["eof"].as_bool());
-  ASSERT_EQ(j["end"].as_string(),cursor1);
+  ASSERT_EQ(j["end"].as_string(), cursor1);
 
   jval = json::value::object();
-  jval["pagesize"] = web::json::value::number(2*pagesize);
+  jval["pagesize"] = web::json::value::number(2 * pagesize);
   jval["begin"] = web::json::value::string(cursor1);
 
   j = make_request("/v1/paged_search", jval);
   r = j["items"].as_array();
-  ASSERT_EQ(r.size(), 2*pagesize);
+  ASSERT_EQ(r.size(), 2 * pagesize);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
   ASSERT_FALSE(j["eof"].as_bool());
   ASSERT_EQ(j["end"].as_string(), cursor2);
 
   jval = json::value::object();
-  jval["pagesize"] = web::json::value::number(10*pagesize);
+  jval["pagesize"] = web::json::value::number(10 * pagesize);
   jval["begin"] = web::json::value::string(cursor2);
 
   j = make_request("/v1/paged_search", jval);
   r = j["items"].as_array();
-  ASSERT_EQ(r.size(), 60 - 3*pagesize);
+  ASSERT_EQ(r.size(), 60 - 3 * pagesize);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
   ASSERT_TRUE(j["eof"].as_bool());
@@ -455,11 +471,11 @@ TEST_F(restTester, getPagedReverse) {
   j = make_request("/v1/paged_search", jval);
   auto r2 = j["items"].as_array();
 
-  vector<string> v1,v2;
+  vector<string> v1, v2;
 
-  for (auto i:r1)
+  for (auto i : r1)
     v1.push_back(i.as_string());
-  for (auto i:r2)
+  for (auto i : r2)
     v2.push_back(i.as_string());
   ASSERT_TRUE(equal(v1.cbegin(), v1.cend(), v2.crbegin()));
 }
@@ -478,6 +494,39 @@ TEST_F(restTester, getPagedMatch) {
   auto j{make_request("/v1/paged_search", jval)};
   auto r = j["items"].as_array();
   ASSERT_EQ(r.size(), 8);
+}
+
+TEST_F(restTester, getAllFields) {
+  auto jval = json::value::object();
+  vector<string> v;
+
+  auto j{make_request("/v1/all_fields", jval)};
+  auto r = j.as_array();
+
+  for (auto i : r)
+    v.push_back(i.as_string());
+
+  ASSERT_EQ(v.size(), 42);
+  ASSERT_TRUE(any_of(v.cbegin(), v.cend(), [](auto i) {
+    return i == "_SOURCE_REALTIME_TIMESTAMP"s;
+  }));
+}
+
+TEST_F(restTester, getFieldUnique) {
+  auto jval = json::value::object();
+  vector<string> v;
+
+  jval["field"] = web::json::value::string("_SOURCE_REALTIME_TIMESTAMP"s);
+  auto j{make_request("/v1/field_unique", jval)};
+  auto r = j.as_array();
+
+  for (auto i : r)
+    v.push_back(i.as_string());
+
+  ASSERT_EQ(v.size(), 28);
+  ASSERT_TRUE(any_of(v.cbegin(), v.cend(), [](auto i) {
+    return i == "_SOURCE_REALTIME_TIMESTAMP=1580508702424269"s;
+  }));
 }
 
 // TODO: unify with others and singletonify

@@ -142,14 +142,14 @@ public:
   void primeJournal(unsigned int offset) {
     if (auto ret{sd_journal_seek_head(raw)}; ret < 0)
       throw runtime_error("Failed to reset to journal head");
-    if (auto ret{sd_journal_next_skip(raw, offset)}; ret >= 0 && ret < static_cast<int>(offset))
+    if (auto ret{sd_journal_next_skip(raw, offset)};
+        ret >= 0 && ret < static_cast<int>(offset))
       throw runtime_error("Journal empty or shorter than offset");
     else if (ret < 0)
       throw runtime_error("Error during first read");
   }
 
-
-  void primeJournalEnd() {//TODO:unify
+  void primeJournalEnd() { // TODO:unify
     if (auto ret{sd_journal_seek_tail(raw)}; ret < 0)
       throw runtime_error("Failed to reset to journal tail");
     if (auto ret{sd_journal_previous(raw)}; ret == 0)
@@ -159,13 +159,12 @@ public:
   }
 
   void primeJournal(const string &cursor, bool backwards) {
-    if (cursor == ""s)
-      {
+    if (cursor == ""s) {
       if (backwards)
-	return primeJournalEnd();
+        return primeJournalEnd();
       else
-	return  primeJournal();
-      }
+        return primeJournal();
+    }
     if (auto ret{sd_journal_seek_cursor(raw, cursor.c_str())}; ret < 0)
       throw runtime_error("Failed to reset journal to cursor");
 
@@ -410,6 +409,18 @@ public:
     SD_JOURNAL_FOREACH_FIELD(journal, field)
     ret.emplace_back(field);
     sd_journal_restart_fields(journal);
+    return ret;
+  }
+
+  vector<string> fieldUnique(string field) {
+    vector<string> ret;
+    const void *d;
+    size_t l;
+    if (auto r = sd_journal_query_unique(journal, field.c_str()); r < 0)
+      throw runtime_error("Failed to query for field: "s + field + " : "s +
+                          string{strerror(-r)});
+    SD_JOURNAL_FOREACH_UNIQUE(journal, d, l)
+    ret.emplace_back(static_cast<const char *>(d));
     return ret;
   }
 
