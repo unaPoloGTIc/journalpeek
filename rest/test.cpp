@@ -428,48 +428,48 @@ TEST_F(restTester, getPagedParts) {
   auto jval = json::value::object();
   jval["pagesize"] = web::json::value::number(pagesize);
 
-  auto j{make_request("/v1/paged_search", jval)};
-  auto r = j["items"].as_array();
+  auto j1{make_request("/v1/paged_search", jval)};
+  auto r = j1["items"].as_array();
   ASSERT_EQ(r.size(), pagesize);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
-  ASSERT_FALSE(j["eof"].as_bool());
-  ASSERT_EQ(j["end"].as_string(), cursor1);
+  ASSERT_FALSE(j1["eof"].as_bool());
+  ASSERT_EQ(j1["end"].as_string(), cursor1);
 
   jval = json::value::object();
   jval["pagesize"] = web::json::value::number(2 * pagesize);
   jval["begin"] = web::json::value::string(cursor1);
 
-  j = make_request("/v1/paged_search", jval);
-  r = j["items"].as_array();
+  auto j2 {make_request("/v1/paged_search", jval)};
+  r = j2["items"].as_array();
   ASSERT_EQ(r.size(), 2 * pagesize);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
-  ASSERT_FALSE(j["eof"].as_bool());
-  ASSERT_EQ(j["end"].as_string(), cursor2);
+  ASSERT_FALSE(j2["eof"].as_bool());
+  ASSERT_EQ(j2["end"].as_string(), cursor2);
 
   jval = json::value::object();
   jval["pagesize"] = web::json::value::number(10 * pagesize);
   jval["begin"] = web::json::value::string(cursor2);
 
-  j = make_request("/v1/paged_search", jval);
-  r = j["items"].as_array();
+  auto j3 {make_request("/v1/paged_search", jval)};
+  r = j3["items"].as_array();
   ASSERT_EQ(r.size(), 60 - 3 * pagesize);
   for (auto &v : r)
     ASSERT_NO_THROW(v.as_string());
-  ASSERT_TRUE(j["eof"].as_bool());
-  ASSERT_EQ(j["end"].as_string(), cursorEnd);
+  ASSERT_TRUE(j3["eof"].as_bool());
+  ASSERT_EQ(j3["end"].as_string(), cursorEnd);
 }
 
 TEST_F(restTester, getPagedReverse) {
   auto jval = json::value::object();
-  auto j{make_request("/v1/paged_search", jval)};
-  auto r1 = j["items"].as_array();
+  auto j1{make_request("/v1/paged_search", jval)};
+  auto r1 = j1["items"].as_array();
 
   jval = json::value::object();
   jval["backwards"] = web::json::value::boolean(true);
-  j = make_request("/v1/paged_search", jval);
-  auto r2 = j["items"].as_array();
+  auto j2 {make_request("/v1/paged_search", jval)};
+  auto r2 = j2["items"].as_array();
 
   vector<string> v1, v2;
 
