@@ -13,11 +13,11 @@
       <form [formGroup]="logForm">
     <fieldset>
       <legend>Search:</legend>
-      <select id="fields" name="fields" formControlName="field">
-	<option value="blank">Select field name</option>
+      <select id="fields" name="fields" [formControl]="field">
+	<option *ngFor="let f of fields" value="{{f}}">{{f}}</option>
       </select><br><br>
       <select id="values" name="values" formControlName="unique">
-	<option value="blank">Select filter value</option>
+	<option *ngFor="let u of uniques" value="{{u}}">{{u}}</option>
       </select><br><br>
       <input type="text" id="regex" name="regex" style="width:230px;" placeholder="Regex pattern" formControlName="regex"><br><br>
       <input type="checkbox" id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase"><label for="ignorecase"> Ignore case</label>
@@ -46,6 +46,8 @@
     <h1>Logs go here</h1>
     <p>logForm: {{ logForm.value | json }}</p>
     <p>cursor: {{cursor}}</p>
+    <p>eof: {{eof}}</p>
+    <p>field: {{field.value}}</p>
     <div *ngFor="let l of lines">{{l}}</div>
   </div>
 

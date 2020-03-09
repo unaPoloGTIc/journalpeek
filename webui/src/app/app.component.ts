@@ -12,8 +12,8 @@ import { Page } from './page';
 
 export class AppComponent {
     title = 'webui';
+    field = new FormControl('');
     logForm = new FormGroup({
-	field: new FormControl(''),
 	unique: new FormControl(''),
 	regex: new FormControl(''),
 	ignorecase: new FormControl('true'),
@@ -22,11 +22,21 @@ export class AppComponent {
     cursor = '';
     lines = [];
     eof = false;
+    fields = [];
+    uniques = [];
     constructor(public js: JournalService) { }
 
-    getjournal(): void{this.js.getjournal().subscribe(l => {this.lines = l.items; this.cursor = l.cursor; this.eof = l.eof;});};
+    getjournal(): void{this.js.getjournal().subscribe(l => {this.lines = l.items; this.cursor = l.end; this.eof = l.eof;});};
+    getfields(): void{this.js.getfields().subscribe(l => {this.fields = l;})};
+    updateunique(): void {
+	this.field.valueChanges.subscribe(v => {
+	    this.js.getuniques(v).subscribe(l => {this.uniques = l;});
+	});
+    };
     ngOnInit() {
 	this.getjournal();
+	this.getfields();
+	this.updateunique();
   }
 
 }

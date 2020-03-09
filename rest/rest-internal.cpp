@@ -2,6 +2,16 @@
 
 string messageLiteral = "MESSAGE"s;
 
+function<web::http::http_response(web::json::value)> corsWrapper =
+    [](web::json::value rep) {
+      web::http::http_response response(web::http::status_codes::OK);
+      response.set_body(rep);
+      response.headers().add("Access-Control-Allow-Origin", "*");
+      response.headers().add("Access-Control-Allow-Methods",
+                             " POST, GET, OPTIONS");
+      response.headers().add("Access-Control-Allow-Headers", "Content-Type");
+      return response;
+    };
 handlersMap jdwrapper{
     {"/v0/paged_search",
      [](web::http::http_request req, web::json::value jvals) {
@@ -33,7 +43,8 @@ handlersMap jdwrapper{
        for (const auto &m : allMsgs) /// TODO: use offset, size
          auto r = allVals.emplace_back(web::json::value::string(m));
        rep["resp"] = web::json::value::array(allVals);
-       req.reply(web::http::status_codes::OK, rep).wait();
+       req.reply(corsWrapper(rep)).wait();
+
        return;
      }},
     {"/v1/paged_search",
@@ -74,7 +85,8 @@ handlersMap jdwrapper{
        rep["items"] = web::json::value::array(allVals);
        rep["end"] = web::json::value::string(end);
        rep["eof"] = web::json::value::boolean(eof);
-       req.reply(web::http::status_codes::OK, rep).wait();
+       req.reply(corsWrapper(rep)).wait();
+
        return;
      }},
 
@@ -89,7 +101,7 @@ handlersMap jdwrapper{
          auto r = allVals.emplace_back(web::json::value::string(m));
 
        auto rep{web::json::value::array(allVals)};
-       req.reply(web::http::status_codes::OK, rep).wait();
+       req.reply(corsWrapper(rep)).wait();
        return;
      }},
 
@@ -107,7 +119,7 @@ handlersMap jdwrapper{
          auto r = allVals.emplace_back(web::json::value::string(m));
 
        auto rep{web::json::value::array(allVals)};
-       req.reply(web::http::status_codes::OK, rep).wait();
+       req.reply(corsWrapper(rep)).wait();
        return;
      }},
 
@@ -115,17 +127,22 @@ handlersMap jdwrapper{
 
 restServer::restServer(handlersMap endpoints, string port)
     : s("http://0.0.0.0:"s + port + "/") {
-  s.support(web::http::methods::GET, [endpoints](web::http::http_request req) {
-    auto u{req.relative_uri().to_string()};
-    try {
-      auto jvals{req.extract_json().get()};
-      auto endpoint{req.relative_uri().to_string()};
-      endpoints.at(endpoint)(req, jvals);
-    } catch (...) {
-      req.reply(web::http::status_codes::NotFound, "Error handling request")
-          .wait();
-    }
-  });
+  s.support(
+      /*web::http::methods::GET,*/ /*F CORS, F Angular*/ [endpoints](
+                                                             web::http::
+                                                                 http_request
+                                                                     req) {
+        auto u{req.relative_uri().to_string()};
+        try {
+          auto jvals{req.extract_json().get()};
+          auto endpoint{req.relative_uri().to_string()};
+          endpoints.at(endpoint)(req, jvals);
+        } catch (...) {
+          req.reply(web::http::status_codes::NotFound,
+                    "Error handling request") // corsWrapper?
+              .wait();
+        }
+      });
 
   auto waiter{s.open()};
   if (waiter.wait() != pplx::completed)

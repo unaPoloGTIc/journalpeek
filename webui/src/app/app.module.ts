@@ -6,6 +6,7 @@ import { AppComponent } from './app.component';
 
 import { ReactiveFormsModule } from '@angular/forms';
 import { ViewerComponent } from './viewer/viewer.component';
+import { HttpClientModule } from '@angular/common/http';
 
 @NgModule({
   declarations: [
@@ -15,7 +16,8 @@ import { ViewerComponent } from './viewer/viewer.component';
   imports: [
       BrowserModule,
       AppRoutingModule,
-      ReactiveFormsModule
+      ReactiveFormsModule,
+      HttpClientModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
