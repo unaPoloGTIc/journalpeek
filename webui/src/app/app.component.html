@@ -33,9 +33,9 @@
 	<option value="150">150 Entries</option>
 	<option value="200">200 Entries</option>
       </select><br><br>
-      <button type="button" onclick="">|<-</button>
+      <button type="button" (click)="prevcur = '';getjournal(false);">|<-</button>
       <button type="button" onclick=""><-</button>
-      <button type="button" onclick="">-></button>
+      <button type="button" (click)="prevcur = cursor;getjournal(false);">-></button>
     </fieldset>
     </form>
 </div>
@@ -47,6 +47,7 @@
     <h1>Logs go here</h1>
     <p>logForm: {{ logForm.value | json }}</p>
     <p>cursor: {{cursor}}</p>
+    <p>prevcur: {{prevcur}}</p>
     <p>eof: {{eof}}</p>
     <p>field: {{field.value}}</p>
     <div *ngFor="let l of lines">{{l}}</div>
