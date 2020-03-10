@@ -2,27 +2,21 @@
 
 string messageLiteral = "MESSAGE"s;
 
-//TODO: abide by https://www.w3.org/TR/cors/#resource-preflight-requests
-function<web::http::http_response()> emptyCors =
-    []() {
-      web::http::http_response response(web::http::status_codes::NoContent);
-      response.headers().add("Access-Control-Allow-Credentials", "true");//TODO: unify
-      response.headers().add("Access-Control-Allow-Headers", "*");
-      response.headers().add("Access-Control-Allow-Methods", "*");
-      response.headers().add("Access-Control-Allow-Origin", "*");
-      return response;
+function<void(web::http::http_request &, web::http::http_response &)> corsify =
+    [](web::http::http_request &req, web::http::http_response &response) {
+      auto headers{req.headers()};
+      // web::http::http_response response(web::http::status_codes::NoContent);
+      auto sethead = [&headers, &response](string from, string to) {
+        auto orig{headers.find(from)};
+        response.headers().add(to, orig == headers.end() ? "*" : orig->second);
+      };
+      // response.headers().add("Access-Control-Allow-Credentials", "true");
+      sethead("Access-Control-Request-Headers", "Access-Control-Allow-Headers");
+      sethead("Access-Control-Request-Method", "Access-Control-Allow-Methods");
+      sethead("Origin", "Access-Control-Allow-Origin");
+      req.reply(response).wait();
     };
 
-function<web::http::http_response(web::json::value)> corsWrapper =
-    [](web::json::value rep) {
-      web::http::http_response response(web::http::status_codes::OK);
-      response.set_body(rep);
-      response.headers().add("Access-Control-Allow-Credentials", "true");
-      response.headers().add("Access-Control-Allow-Headers", "*");
-      response.headers().add("Access-Control-Allow-Methods", "*");
-      response.headers().add("Access-Control-Allow-Origin", "*");
-      return response;
-    };
 handlersMap jdwrapper{
     {"/v0/paged_search",
      [](web::http::http_request req, web::json::value jvals) {
@@ -53,9 +47,11 @@ handlersMap jdwrapper{
        vector<web::json::value> allVals;
        for (const auto &m : allMsgs) /// TODO: use offset, size
          auto r = allVals.emplace_back(web::json::value::string(m));
-       rep["resp"] = web::json::value::array(allVals);
-       req.reply(corsWrapper(rep)).wait();
 
+       rep["resp"] = web::json::value::array(allVals);
+       web::http::http_response response(web::http::status_codes::OK);
+       response.set_body(rep);
+       corsify(req, response);
        return;
      }},
     {"/v1/paged_search",
@@ -96,8 +92,10 @@ handlersMap jdwrapper{
        rep["items"] = web::json::value::array(allVals);
        rep["end"] = web::json::value::string(end);
        rep["eof"] = web::json::value::boolean(eof);
-       req.reply(corsWrapper(rep)).wait();
 
+       web::http::http_response response(web::http::status_codes::OK);
+       response.set_body(rep);
+       corsify(req, response);
        return;
      }},
 
@@ -112,7 +110,10 @@ handlersMap jdwrapper{
          auto r = allVals.emplace_back(web::json::value::string(m));
 
        auto rep{web::json::value::array(allVals)};
-       req.reply(corsWrapper(rep)).wait();
+
+       web::http::http_response response(web::http::status_codes::OK);
+       response.set_body(rep);
+       corsify(req, response);
        return;
      }},
 
@@ -130,30 +131,39 @@ handlersMap jdwrapper{
          auto r = allVals.emplace_back(web::json::value::string(m));
 
        auto rep{web::json::value::array(allVals)};
-       req.reply(corsWrapper(rep)).wait();
+       web::http::http_response response(web::http::status_codes::OK);
+       response.set_body(rep);
+       corsify(req, response);
        return;
      }},
 
 };
 
+//TODO: solve unsafe-port issues (chrome, firefox)
 restServer::restServer(handlersMap endpoints, string port)
     : s("http://0.0.0.0:"s + port + "/") {
-  s.support(
-      /*web::http::methods::GET,*/ /*F CORS, F Angular*/ [endpoints](
-                                                             web::http::
-                                                                 http_request
-                                                                     req) {
-        auto u{req.relative_uri().to_string()};
-        try {
-          auto jvals{req.extract_json().get()};
-          auto endpoint{req.relative_uri().to_string()};
-          endpoints.at(endpoint)(req, jvals);
-        } catch (...) {
+  auto responder = [endpoints](web::http::http_request req) {
+    auto u{req.relative_uri().to_string()};
+    try {
+      auto jvals{req.extract_json().get()};
+      auto endpoint{req.relative_uri().to_string()};
+      endpoints.at(endpoint)(req, jvals);
+    } catch (...) {
 
-	  //TODO: distinguish catch from preflight?
-	  //auto rep{web::json::value::string("Error handling request"s)};//TODO: do something about the status code, F CORS
-          req.reply(emptyCors()).wait();
-        }
+      auto rep{web::json::value::string("Error handling request"s)};
+      web::http::http_response response(web::http::status_codes::NotFound);
+      response.set_body(rep);
+      corsify(req, response);
+    }
+  };
+  s.support(web::http::methods::GET, responder);
+  /*F Angular*/
+  s.support(web::http::methods::POST, responder);
+  /*F CORS*/
+  s.support(
+      web::http::methods::OPTIONS, [endpoints](web::http::http_request req) {
+        web::http::http_response response(web::http::status_codes::NoContent);
+        corsify(req, response);
       });
 
   auto waiter{s.open()};
