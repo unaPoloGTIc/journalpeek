@@ -10,9 +10,21 @@ export class JournalService {
     p: Page;
     jUrl = 'http://localhost:6666/v1/';
     
-    getjournal():Observable<Page>
+    getjournal(form: any, cur: string, back: boolean):Observable<Page>
     {
-	return this.http.get<Page>(this.jUrl + 'paged_search');
+	let jdata = {
+	    backwards: back,
+	    pagesize: parseInt(form.value.pagesize),
+	    begin: cur,
+	    regex: form.value.regex,
+	    ignore_case: form.value.ignorecase,
+	};
+	if (form.value.unique !== "")
+	{
+	    jdata['match'] = form.value.unique;
+	}
+	
+	return this.http.post<Page>(this.jUrl + 'paged_search', jdata);
 	//return of(this.p);
     }
     getfields():Observable<string[]>
@@ -21,8 +33,6 @@ export class JournalService {
     }
     getuniques(f: string):Observable<string[]>
     {
-	console.log("dammit cors")
-	//return this.http.get<string[]>(this.jUrl + 'field_unique', {headers: {"Content-Type":"application/json"}, responseType: "json", observe: "body"});
 	return this.http.post<string[]>(this.jUrl + 'field_unique', {field:f});
     }
     constructor(private http: HttpClient) {

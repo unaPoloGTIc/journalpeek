@@ -18,6 +18,7 @@
       </select><br><br>
       <select id="values" name="values" formControlName="unique">
 	<option *ngFor="let u of uniques" value="{{u}}">{{u}}</option>
+	<option value="">UNSELECT</option>
       </select><br><br>
       <input type="text" id="regex" name="regex" style="width:230px;" placeholder="Regex pattern" formControlName="regex"><br><br>
       <input type="checkbox" id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase"><label for="ignorecase"> Ignore case</label>
