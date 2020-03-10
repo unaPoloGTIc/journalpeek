@@ -2,14 +2,25 @@
 
 string messageLiteral = "MESSAGE"s;
 
+//TODO: abide by https://www.w3.org/TR/cors/#resource-preflight-requests
+function<web::http::http_response()> emptyCors =
+    []() {
+      web::http::http_response response(web::http::status_codes::NoContent);
+      response.headers().add("Access-Control-Allow-Credentials", "true");//TODO: unify
+      response.headers().add("Access-Control-Allow-Headers", "*");
+      response.headers().add("Access-Control-Allow-Methods", "*");
+      response.headers().add("Access-Control-Allow-Origin", "*");
+      return response;
+    };
+
 function<web::http::http_response(web::json::value)> corsWrapper =
     [](web::json::value rep) {
       web::http::http_response response(web::http::status_codes::OK);
       response.set_body(rep);
+      response.headers().add("Access-Control-Allow-Credentials", "true");
+      response.headers().add("Access-Control-Allow-Headers", "*");
+      response.headers().add("Access-Control-Allow-Methods", "*");
       response.headers().add("Access-Control-Allow-Origin", "*");
-      response.headers().add("Access-Control-Allow-Methods",
-                             " POST, GET, OPTIONS");
-      response.headers().add("Access-Control-Allow-Headers", "Content-Type");
       return response;
     };
 handlersMap jdwrapper{
@@ -138,9 +149,10 @@ restServer::restServer(handlersMap endpoints, string port)
           auto endpoint{req.relative_uri().to_string()};
           endpoints.at(endpoint)(req, jvals);
         } catch (...) {
-          req.reply(web::http::status_codes::NotFound,
-                    "Error handling request") // corsWrapper?
-              .wait();
+
+	  //TODO: distinguish catch from preflight?
+	  //auto rep{web::json::value::string("Error handling request"s)};//TODO: do something about the status code, F CORS
+          req.reply(emptyCors()).wait();
         }
       });
 
