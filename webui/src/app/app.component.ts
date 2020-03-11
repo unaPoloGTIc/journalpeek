@@ -18,7 +18,7 @@ export class AppComponent {
 	unique: new FormControl(''),
 	regex: new FormControl(''),
 	ignorecase: new FormControl('true'),
-	pagesize: new FormControl('5')
+	pagesize: new FormControl('50')
     });
     prevcur = '';
     cursor = '';
@@ -26,14 +26,34 @@ export class AppComponent {
     eof = false;
     fields = [];
     uniques = [];
+    Convert = require('ansi-to-html');
+    convert = new this.Convert();
+
     constructor(public js: JournalService) { }
 
-    getjournal(backwards: boolean): void{const tmp = this.js.getjournal(this.logForm, this.prevcur, backwards).pipe(first());
-					 const ret = tmp.subscribe(l => {this.lines = l.items;
-									 //this.prevcur = this.cursor;
-									 this.cursor = l.end;
-									 this.eof = l.eof;});
-					};
+    getjournal(backwards: boolean): void{
+	const dir = backwards?this.prevcur:this.cursor;
+	const tmp = this.js.getjournal(this.logForm, dir, backwards).pipe(first());
+	const ret = tmp.subscribe(l => {this.lines = l.items;
+					this.eof = false;
+					if (backwards)
+					{
+					    this.cursor = this.prevcur;
+					    this.prevcur = l.end;
+					    this.lines.reverse();
+					    if(l.eof)
+					    {
+						this.prevcur = "";
+					    }
+					}
+					else
+					{
+					    this.prevcur = this.cursor;
+					    this.cursor = l.end;
+					    this.eof = l.eof;
+					}
+				       });
+    };
     getfields(): void{this.js.getfields().subscribe(l => {this.fields = l;})};
     updateunique(): void {
 	this.field.valueChanges.subscribe(v => {
@@ -44,6 +64,7 @@ export class AppComponent {
     };
     updateform(): void {
 	this.logForm.valueChanges.subscribe(v => {
+	    this.cursor = this.prevcur;
 	    this.getjournal(false);
 	});
     };
