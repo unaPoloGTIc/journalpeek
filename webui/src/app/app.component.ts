@@ -27,6 +27,7 @@ export class AppComponent {
     uniques = [];
     Convert = require('ansi-to-html');
     convert = new this.Convert();
+    columnsToDisplay = ['Matches'];
 
     constructor(public js: JournalService) { }
 
@@ -34,6 +35,7 @@ export class AppComponent {
 	const dir = backwards?this.prevcur:this.cursor;
 	const tmp = this.js.getjournal(this.logForm, dir, backwards).pipe(first());
 	const ret = tmp.subscribe(l => {this.lines = l.items;
+					this.lines.forEach(l => l = this.convert.toHtml(l));
 					this.eof = false;
 					if (backwards)
 					{

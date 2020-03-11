@@ -10,6 +10,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {MatSidenavModule} from '@angular/material/sidenav';
 import {MatButtonModule} from '@angular/material/button';
+import {MatTableModule} from '@angular/material/table';
 
 @NgModule({
   declarations: [
@@ -23,7 +24,8 @@ import {MatButtonModule} from '@angular/material/button';
       HttpClientModule,
       BrowserAnimationsModule,
       MatSidenavModule,
-      MatButtonModule
+      MatButtonModule,
+      MatTableModule
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -40,13 +40,14 @@
     <mat-sidenav-content>
       <p><button mat-button (click)="sdnav.toggle()">Toggle Search and Navigate</button></p>
       <div>
-	<h1>Logs go here</h1>
-	<p>logForm: {{ logForm.value | json }}</p>
-	<p>cursor: {{cursor}}</p>
-	<p>prevcur: {{prevcur}}</p>
-	<p>eof: {{eof}}</p>
-	<p>field: {{field.value}}</p>
-	<div *ngFor="let l of lines">{{convert.toHtml(l)}}</div>
+	<table mat-table [dataSource]="lines">
+	  <ng-container matColumnDef="Matches">
+	    <th mat-header-cell *matHeaderCellDef> Matches </th>
+	    <td mat-cell *matCellDef="let match"> {{match}} </td>
+	  </ng-container>
+	  <tr mat-header-row *matHeaderRowDef="columnsToDisplay"></tr>
+	  <tr mat-row *matRowDef="let myRowData; columns: columnsToDisplay"></tr>
+	</table>
       </div>
     </mat-sidenav-content>
   </mat-sidenav-container>
