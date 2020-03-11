@@ -1,71 +1,54 @@
 <!DOCTYPE html>
 <html>
-<title>W3.CSS</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<title>JournalPeek</title>
 <body>
-
-  <div class="w3-sidebar w3-bar-block w3-collapse w3-card w3-animate-left" style="width:250px;" id="mySidebar">
-    <button class="w3-bar-item w3-button w3-large w3-hide-large" onclick="w3_close()">Close &times;</button>
-      <div class="w3-container">
-    <h1>Journal Peek</h1>
+  <mat-sidenav-container>
+    <mat-sidenav #sdnav mode="side" opened>
+      <p><button mat-button (click)="sdnav.open()">Redraw (material bug)</button></p>
+      <div>
+	<h1>Journal Peek</h1>
       </div>
       <form [formGroup]="logForm">
-    <fieldset>
-      <legend>Search:</legend>
-      <select id="fields" name="fields" [formControl]="field">
-	<option *ngFor="let f of fields" value="{{f}}">{{f}}</option>
-      </select><br><br>
-      <select id="values" name="values" formControlName="unique">
-	<option *ngFor="let u of uniques" value="{{u}}">{{u}}</option>
-	<option value=""></option>
-      </select><br><br>
-      <input type="text" id="regex" name="regex" style="width:230px;" placeholder="Regex pattern" formControlName="regex"><br><br>
-      <input type="checkbox" id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase"><label for="ignorecase"> Ignore case</label>
-    </fieldset><br>
-    <fieldset>
-      <legend>Navigation:</legend>
-      <select id="pagesize" name="pagesize" formControlName="pagesize">
-	<option value="5">5 Entries</option>
-	<option value="10">10 Entries</option>
-	<option value="50">50 Entries</option>
-	<option value="100">100 Entries</option>
-	<option value="150">150 Entries</option>
-	<option value="200">200 Entries</option>
-      </select><br><br>
-      <button type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
-      <button type="button" (click)="getjournal(true);" [disabled]="prevcur===''"><-</button>
-      <button type="button" (click)="getjournal(false);" [disabled]="eof">-></button>
-    </fieldset>
-    </form>
-</div>
-
-<div class="w3-main" style="margin-left:250px">
-
-  <button class="w3-button w3-teal w3-xlarge w3-hide-large" onclick="w3_open()">&#9776;</button>
-  <div class="w3-container">
-    <h1>Logs go here</h1>
-    <p>logForm: {{ logForm.value | json }}</p>
-    <p>cursor: {{cursor}}</p>
-    <p>prevcur: {{prevcur}}</p>
-    <p>eof: {{eof}}</p>
-    <p>field: {{field.value}}</p>
-    <div *ngFor="let l of lines">{{convert.toHtml(l)}}</div>
-  </div>
-
-</div>
-
-<script>
-function w3_open() {
-  document.getElementById("mySidebar").style.display = "block";
-}
-
-function w3_close() {
-  document.getElementById("mySidebar").style.display = "none";
-}
-</script>
-     
+	<fieldset>
+	  <legend>Search:</legend>
+	  <select id="fields" name="fields" [formControl]="field">
+	    <option *ngFor="let f of fields" value="{{f}}">{{f}}</option>
+	  </select><br><br>
+	  <select id="values" name="values" formControlName="unique">
+	    <option value=""></option>
+	    <option *ngFor="let u of uniques" value="{{u}}">{{u}}</option>
+	  </select><br><br>
+	  <input type="text" id="regex" name="regex" placeholder="Regex pattern" formControlName="regex"><br><br>
+	  <input type="checkbox" id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase"><label for="ignorecase"> Ignore case</label>
+	</fieldset><br>
+	<fieldset>
+	  <legend>Navigation:</legend>
+	  <select id="pagesize" name="pagesize" formControlName="pagesize">
+	    <option value="5">5 Entries</option>
+	    <option value="10">10 Entries</option>
+	    <option value="50">50 Entries</option>
+	    <option value="100">100 Entries</option>
+	    <option value="150">150 Entries</option>
+	    <option value="200">200 Entries</option>
+	  </select><br><br>
+	  <button type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
+										       <button type="button" (click)="getjournal(true);" [disabled]="prevcur===''"><-</button>
+																				     <button type="button" (click)="getjournal(false);" [disabled]="eof">-></button>
+	</fieldset>
+      </form>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <p><button mat-button (click)="sdnav.toggle()">Toggle Search and Navigate</button></p>
+      <div>
+	<h1>Logs go here</h1>
+	<p>logForm: {{ logForm.value | json }}</p>
+	<p>cursor: {{cursor}}</p>
+	<p>prevcur: {{prevcur}}</p>
+	<p>eof: {{eof}}</p>
+	<p>field: {{field.value}}</p>
+	<div *ngFor="let l of lines">{{convert.toHtml(l)}}</div>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </body>
 </html>
-
-<router-outlet></router-outlet>

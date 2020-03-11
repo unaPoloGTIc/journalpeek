@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-//import { ViewerComponent } from './viewer/viewer.component';
 import { FormGroup, FormControl } from '@angular/forms';
 import { JournalService } from './journal.service';
 import { Page } from './page';

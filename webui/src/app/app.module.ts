@@ -7,6 +7,9 @@ import { AppComponent } from './app.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ViewerComponent } from './viewer/viewer.component';
 import { HttpClientModule } from '@angular/common/http';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import {MatSidenavModule} from '@angular/material/sidenav';
+import {MatButtonModule} from '@angular/material/button';
 
 @NgModule({
   declarations: [
@@ -18,6 +21,9 @@ import { HttpClientModule } from '@angular/common/http';
       AppRoutingModule,
       ReactiveFormsModule,
       HttpClientModule,
+      BrowserAnimationsModule,
+      MatSidenavModule,
+      MatButtonModule
   ],
   providers: [],
   bootstrap: [AppComponent]
