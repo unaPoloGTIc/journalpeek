@@ -9,7 +9,7 @@ import { Page } from './page';
 export class JournalService {
     p: Page;
     jUrl = 'http://localhost:6666/v1/';
-    
+
     getjournal(form: any, cur: string, back: boolean):Observable<Page>
     {
 	let jdata = {

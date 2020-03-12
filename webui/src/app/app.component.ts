@@ -3,6 +3,7 @@ import { FormGroup, FormControl } from '@angular/forms';
 import { JournalService } from './journal.service';
 import { Page } from './page';
 import { first } from 'rxjs/operators';
+import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-root',
@@ -29,33 +30,40 @@ export class AppComponent {
     convert = new this.Convert();
     columnsToDisplay = ['Matches'];
 
-    constructor(public js: JournalService) { }
+    constructor(public js: JournalService, private sanitizer: DomSanitizer) { }
 
     getjournal(backwards: boolean): void{
 	const dir = backwards?this.prevcur:this.cursor;
 	const tmp = this.js.getjournal(this.logForm, dir, backwards).pipe(first());
-	const ret = tmp.subscribe(l => {this.lines = l.items;
-					this.lines.forEach(l => l = this.convert.toHtml(l));
-					this.eof = false;
-					if (backwards)
-					{
-					    this.cursor = this.prevcur;
-					    this.prevcur = l.end;
-					    this.lines.reverse();
-					    if(l.eof)
-					    {
-						this.prevcur = "";
-					    }
-					}
-					else
-					{
-					    this.prevcur = this.cursor;
-					    this.cursor = l.end;
-					    this.eof = l.eof;
-					}
-				       });
-    };
+	const ret = tmp.subscribe(l => {
+	    this.lines = [];
+	    l.items.forEach(
+		(line) => {
+		    const trusted = this
+			.sanitizer
+			.bypassSecurityTrustHtml(
+			    this.convert.toHtml(line));
+		    this.lines.push(trusted);});
+	    this.eof = false;
+	    if (backwards)
+	    {
+		this.cursor = this.prevcur;
+		this.prevcur = l.end;
+		this.lines.reverse();
+		if(l.eof)
+		{
+		    this.prevcur = "";
+		}
+	    }
+	    else
+	    {
+		this.prevcur = this.cursor;
+		this.cursor = l.end;
+		this.eof = l.eof;
+	    }});};
+
     getfields(): void{this.js.getfields().subscribe(l => {this.fields = l;})};
+
     updateunique(): void {
 	this.field.valueChanges.subscribe(v => {
 	    this.js.getuniques(v).subscribe(l => {
@@ -63,12 +71,14 @@ export class AppComponent {
 		this.logForm.patchValue({unique: ""})});
 	});
     };
+
     updateform(): void {
 	this.logForm.valueChanges.subscribe(v => {
 	    this.cursor = this.prevcur;
 	    this.getjournal(false);
 	});
     };
+
     ngOnInit() {
 	this.getjournal(false);
 	this.getfields();
