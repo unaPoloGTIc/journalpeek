@@ -43,7 +43,7 @@
 	    <mat-option value="200">200 Entries</mat-option>
 	  </mat-select>
 	  </mat-form-field><br>
-	  <button mat-mini-fab type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
+	  <button mat-fab type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
 	  <button mat-mini-fab type="button" (click)="getjournal(true);" [disabled]="prevcur===''"><-</button>
 	  <button mat-mini-fab type="button" (click)="getjournal(false);" [disabled]="eof">-></button>
 	</fieldset>
