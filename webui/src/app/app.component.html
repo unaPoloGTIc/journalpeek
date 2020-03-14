@@ -10,34 +10,48 @@
       <form [formGroup]="logForm">
 	<fieldset>
 	  <legend>Search:</legend>
-	  <select id="fields" name="fields" [formControl]="field">
-	    <option *ngFor="let f of fields" value="{{f}}">{{f}}</option>
-	  </select><br><br>
-	  <select id="values" name="values" formControlName="unique">
-	    <option value=""></option>
-	    <option *ngFor="let u of uniques" value="{{u}}">{{u}}</option>
-	  </select><br><br>
-	  <input type="text" id="regex" name="regex" placeholder="Regex pattern" formControlName="regex"><br><br>
-	  <input type="checkbox" id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase"><label for="ignorecase"> Ignore case</label>
-	</fieldset><br>
+	  <mat-form-field appearance="fill">
+	    <mat-label>Field:</mat-label>
+	    <mat-select id="fields" name="fields" [formControl]="field">
+	      <mat-option *ngFor="let f of fields" value="{{f}}">{{f}}</mat-option>
+	    </mat-select>
+	  </mat-form-field><br>
+	  <mat-form-field appearance="fill">
+	    <mat-label>Value:</mat-label>
+	    <mat-select id="values" name="values" formControlName="unique">
+	      <mat-option value=""></mat-option>
+	      <mat-option *ngFor="let u of uniques" value="{{u}}">{{u}}</mat-option>
+	    </mat-select>
+	  </mat-form-field><br>
+	  <mat-form-field appearance="fill">
+	    <input matInput type="text" id="regex" name="regex" placeholder="Regex pattern" formControlName="regex">
+	  </mat-form-field><br>
+	  <mat-checkbox id="ignorecase" name="ignorecase" value="Ignore Case" checked formControlName="ignorecase">Ignore case</mat-checkbox>
+	  <mat-spinner *ngIf="wait_for_fields"></mat-spinner>
+	</fieldset>
+	<br>
 	<fieldset>
 	  <legend>Navigation:</legend>
-	  <select id="pagesize" name="pagesize" formControlName="pagesize">
-	    <option value="5">5 Entries</option>
-	    <option value="10">10 Entries</option>
-	    <option value="50">50 Entries</option>
-	    <option value="100">100 Entries</option>
-	    <option value="150">150 Entries</option>
-	    <option value="200">200 Entries</option>
-	  </select><br><br>
-	  <button type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
-	  <button type="button" (click)="getjournal(true);" [disabled]="prevcur===''"><-</button>
-	  <button type="button" (click)="getjournal(false);" [disabled]="eof">-></button>
+	  <mat-form-field appearance="fill">
+	    <mat-label>Page size:</mat-label>
+	  <mat-select id="pagesize" name="pagesize" formControlName="pagesize">
+	    <mat-option value="5">5 Entries</mat-option>
+	    <mat-option value="10">10 Entries</mat-option>
+	    <mat-option value="50">50 Entries</mat-option>
+	    <mat-option value="100">100 Entries</mat-option>
+	    <mat-option value="150">150 Entries</mat-option>
+	    <mat-option value="200">200 Entries</mat-option>
+	  </mat-select>
+	  </mat-form-field><br>
+	  <button mat-mini-fab type="button" (click)="prevcur = '';cursor='';getjournal(false);">|<-</button>
+	  <button mat-mini-fab type="button" (click)="getjournal(true);" [disabled]="prevcur===''"><-</button>
+	  <button mat-mini-fab type="button" (click)="getjournal(false);" [disabled]="eof">-></button>
 	</fieldset>
       </form>
     </mat-sidenav>
     <mat-sidenav-content>
       <p><button mat-button (click)="sdnav.toggle()">Toggle Search and Navigate</button></p>
+      <mat-spinner *ngIf="wait_for_lines"></mat-spinner>
       <div>
 	<table mat-table [dataSource]="lines">
 	  <ng-container matColumnDef="Matches">

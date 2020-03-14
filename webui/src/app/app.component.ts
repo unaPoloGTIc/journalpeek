@@ -30,9 +30,13 @@ export class AppComponent {
     convert = new this.Convert();
     columnsToDisplay = ['Matches'];
 
+    wait_for_fields = true;
+    wait_for_lines = true;
+
     constructor(public js: JournalService, private sanitizer: DomSanitizer) { }
 
     getjournal(backwards: boolean): void{
+	this.wait_for_lines = true;
 	const dir = backwards?this.prevcur:this.cursor;
 	const tmp = this.js.getjournal(this.logForm, dir, backwards).pipe(first());
 	const ret = tmp.subscribe(l => {
@@ -60,15 +64,23 @@ export class AppComponent {
 		this.prevcur = this.cursor;
 		this.cursor = l.end;
 		this.eof = l.eof;
-	    }});};
+	    }
+	    this.wait_for_lines = false;
+	});};
 
-    getfields(): void{this.js.getfields().subscribe(l => {this.fields = l;})};
+    getfields(): void{
+	this.wait_for_fields = true;
+	this.js.getfields().subscribe(l => {
+	    this.fields = l;
+	    this.wait_for_fields = false;})};
 
     updateunique(): void {
 	this.field.valueChanges.subscribe(v => {
+	    this.wait_for_fields = true;
 	    this.js.getuniques(v).subscribe(l => {
 		this.uniques = l;
-		this.logForm.patchValue({unique: ""})});
+		this.logForm.patchValue({unique: ""});
+		this.wait_for_fields = false;});
 	});
     };
 
@@ -80,9 +92,9 @@ export class AppComponent {
     };
 
     ngOnInit() {
-	this.getjournal(false);
 	this.getfields();
 	this.updateunique();
+	this.getjournal(false);
 	this.updateform();
   }
 
