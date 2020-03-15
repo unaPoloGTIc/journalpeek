@@ -13,11 +13,16 @@ make dockerize
 
 ## Start the backebd:
 ```
-docker run --name rest-backend -p 6666:6666 --rm -td jd-restify
+docker run -p 6666:6666 --rm -td jd-restify
+```
+Or, to use your own journal files:  
+```
+docker run -v PATH/TO/JOURNAL_FILES:/testdata -p 6666:6666 --rm -td jd-restify
 ```
 
 ## Serve via angular:
-(after the usual npm install...)  
 ```
+npm install
+cd webui
 ng serve
 ```
