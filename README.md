@@ -6,7 +6,7 @@ C++, rest and web-ui wrappers for sd-journal
 ## This is a pet project, be advised that systemd-journal-gatewayd, Journalbeat exist.
 
 ## Build the backend:
-cd rest
+cd rest  
 make dockerize
 
 ## Start the backebd:
