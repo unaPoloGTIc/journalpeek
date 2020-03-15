@@ -22,7 +22,7 @@ docker run -v PATH/TO/JOURNAL_FILES:/testdata -p 6666:6666 --rm -td jd-restify
 
 ## Serve via angular:
 ```
-npm install
 cd webui
+npm install
 ng serve
 ```
