@@ -11,7 +11,7 @@ cd rest
 make dockerize
 ```
 
-## Start the backebd:
+## Start the backend:
 ```
 docker run -p 6666:6666 --rm -td jd-restify
 ```
