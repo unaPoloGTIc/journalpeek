@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Page } from './page';
+import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class JournalService {
-    p: Page;
-    jUrl = 'http://localhost:6666/v1/';
+    jUrl = '';
 
     getjournal(form: any, cur: string, back: boolean):Observable<Page>
     {
@@ -25,7 +25,6 @@ export class JournalService {
 	}
 	
 	return this.http.post<Page>(this.jUrl + 'paged_search', jdata);
-	//return of(this.p);
     }
     getfields():Observable<string[]>
     {
@@ -36,8 +35,12 @@ export class JournalService {
 	return this.http.post<string[]>(this.jUrl + 'field_unique', {field:f});
     }
     constructor(private http: HttpClient) {
-	this.p = {items : ['line1','line2','line3'],
-		  eof : true,
-		  end : "deadMarker"};
+	let env = environment;
+	if (env.production)
+	{
+	    this.jUrl = 'https://trex-security.com:4545/v1/';
+	} else {
+	    this.jUrl = 'http://localhost:6666/v1/';
+	}
     }
 }
