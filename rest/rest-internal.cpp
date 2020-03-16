@@ -140,8 +140,8 @@ handlersMap jdwrapper{
 };
 
 //TODO: solve unsafe-port issues (chrome, firefox)
-restServer::restServer(handlersMap endpoints, string port)
-    : s("http://0.0.0.0:"s + port + "/") {
+restServer::restServer(handlersMap endpoints, string proto)
+  : cw{}, s(proto+"://0.0.0.0:6666/"s, cw.get()) {
   auto responder = [endpoints](web::http::http_request req) {
     auto u{req.relative_uri().to_string()};
     try {

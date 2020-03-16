@@ -461,12 +461,35 @@ public:
 
 extern handlersMap jdwrapper;
 
+class httpsConfWrapper {
+  web::http::experimental::listener::http_listener_config lc;
+  function<void(boost::asio::ssl::context &)> sslCbWrapper;
+
+public:
+  httpsConfWrapper()
+      : lc{}, sslCbWrapper{[](boost::asio::ssl::context &sc) {
+          sc.set_options(boost::asio::ssl::context::default_workarounds |
+                         boost::asio::ssl::context::no_sslv2);
+          sc.use_certificate_file("/certs/live/trex-security.com/fullchain.pem",
+                                  boost::asio::ssl::context::pem);
+          sc.use_private_key_file("/certs/live/trex-security.com/privkey.pem",
+                                  boost::asio::ssl::context::pem);
+          return;
+        }} {
+    lc.set_ssl_context_callback(sslCbWrapper);
+  }
+  const web::http::experimental::listener::http_listener_config &get() {
+    return lc;
+  }
+};
+
 class restServer {
 private:
+  httpsConfWrapper cw;
   web::http::experimental::listener::http_listener s;
 
 public:
   ~restServer();
 
-  restServer(handlersMap endpoints = jdwrapper, string port = "6666"s);
+  restServer(handlersMap endpoints = jdwrapper, string proto = "http"s);
 };

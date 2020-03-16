@@ -370,6 +370,7 @@ TEST_F(Sdj_wrap, conjunction) {
   ASSERT_EQ(m.size(), min(bootCount, msgCount));
 }
 
+//TODO: go full https
 class restTester : public ::testing::Test {
 protected:
   restServer tst;
