@@ -15,12 +15,11 @@ make dockerize
 
 ## Start the backend:
 ```
-docker run -p 6666:6666 --rm -td jd-restify
+docker run -v PATH/TO/JOURNAL_FILES/:/testdata -p 6666:6666 -v /PATH/TO/CERTS/:/certs --rm -td jd-restify
 ```
-Or, to use your own journal files:  
-```
-docker run -v PATH/TO/JOURNAL_FILES:/testdata -p 6666:6666 --rm -td jd-restify
-```
+
+`PATH/TO/JOURNAL_FILES/` Must contain only *.journal files.  
+`/PATH/TO/CERTS/` Must contain `fullchain.pem`, `privkey.pem`. Letsencrypt certs work just fine.
 
 ## Serve via angular:
 ```
