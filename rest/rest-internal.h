@@ -470,9 +470,9 @@ public:
       : lc{}, sslCbWrapper{[](boost::asio::ssl::context &sc) {
           sc.set_options(boost::asio::ssl::context::default_workarounds |
                          boost::asio::ssl::context::no_sslv2);
-          sc.use_certificate_file("/certs/fullchain.pem",
+          sc.use_certificate_file("/certs/live/trex-security.com/fullchain.pem",
                                   boost::asio::ssl::context::pem);
-          sc.use_private_key_file("/certs/privkey.pem",
+          sc.use_private_key_file("/certs/live/trex-security.com/privkey.pem",
                                   boost::asio::ssl::context::pem);
           return;
         }} {
