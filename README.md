@@ -19,7 +19,9 @@ docker run -v PATH/TO/JOURNAL_FILES/:/testdata -p 6666:6666 -v /PATH/TO/CERTS/:/
 ```
 
 `PATH/TO/JOURNAL_FILES/` Must contain only *.journal files.  
-`/PATH/TO/CERTS/` Must contain `fullchain.pem`, `privkey.pem`. Letsencrypt certs work just fine.
+`/PATH/TO/CERTS/` Must contain `/live/trex-security.com/fullchain.pem`, `/live/trex-security.com/privkey.pem`. LetsEncrypt certs work just fine.  
+The hardcoded domain helps me with key rotation on my demo machine (LE keys are symlinked and Docker doesn't like that.).  
+You can ignore my stupidity or change the hardcoded value (or hate mail if that's legal where you live).
 
 ## Serve via angular:
 ```
