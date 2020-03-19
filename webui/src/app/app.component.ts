@@ -35,6 +35,7 @@ export class AppComponent {
 
     constructor(public js: JournalService, private sanitizer: DomSanitizer) { }
 
+    //TODO: when subscribing, handle 404
     getjournal(backwards: boolean): void{
 	this.wait_for_lines = true;
 	const dir = backwards?this.prevcur:this.cursor;
