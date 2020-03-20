@@ -17,17 +17,14 @@ function<void(web::http::http_request &, web::http::http_response &)> corsify =
       req.reply(response).wait();
     };
 
-auto unicodeHack =
-  [](auto& s)
-  {
-    array<char,2> arr = {'\u0001','\u0002'};//TODO: globalize
-    for (auto c : arr)
-      {
-	if (auto l{s.find(c)}; l!=s.npos)
-	  s.replace(l,l+1,"");
-      }
-    return s;
-  };
+auto unicodeHack = [](auto &s) {
+  array<char, 2> arr = {'\u0001', '\u0002'}; // TODO: globalize
+  for (auto c : arr) {
+    if (auto l{s.find(c)}; l != s.npos)
+      s.replace(l, l + 1, "");
+  }
+  return s;
+};
 
 handlersMap jdwrapper{
     {"/v0/paged_search",
@@ -99,7 +96,8 @@ handlersMap jdwrapper{
 
        vector<web::json::value> allVals;
        for (auto &m : vec)
-         auto r = allVals.emplace_back(web::json::value::string(unicodeHack(m)));
+         auto r =
+             allVals.emplace_back(web::json::value::string(unicodeHack(m)));
 
        rep["items"] = web::json::value::array(allVals);
        rep["end"] = web::json::value::string(end);
@@ -119,7 +117,8 @@ handlersMap jdwrapper{
 
        vector<web::json::value> allVals;
        for (auto &m : vec)
-         auto r = allVals.emplace_back(web::json::value::string(unicodeHack(m)));
+         auto r =
+             allVals.emplace_back(web::json::value::string(unicodeHack(m)));
 
        auto rep{web::json::value::array(allVals)};
 
@@ -140,7 +139,8 @@ handlersMap jdwrapper{
 
        vector<web::json::value> allVals;
        for (auto &m : vec)
-	   auto r = allVals.emplace_back(web::json::value::string(unicodeHack(m)));
+         auto r =
+             allVals.emplace_back(web::json::value::string(unicodeHack(m)));
 
        auto rep{web::json::value::array(allVals)};
        web::http::http_response response(web::http::status_codes::OK);
@@ -151,9 +151,9 @@ handlersMap jdwrapper{
 
 };
 
-//TODO: solve unsafe-port issues (chrome, firefox)
+// TODO: solve unsafe-port issues (chrome, firefox)
 restServer::restServer(handlersMap endpoints, string proto)
-  : cw{}, s(proto+"://0.0.0.0:6666/"s, cw.get()) {
+    : cw{}, s(proto + "://0.0.0.0:6666/"s, cw.get()) {
   auto responder = [endpoints](web::http::http_request req) {
     auto u{req.relative_uri().to_string()};
     try {

@@ -1,9 +1,10 @@
 extern "C" {
 #include <curl/curl.h>
 }
-
+// clang-format off
 #include "gtest/gtest.h"
 #include "rest-internal.h"
+// clang-format on
 #include <cpprest/http_client.h>
 #include <cpprest/json.h>
 #include <iostream>
@@ -370,7 +371,7 @@ TEST_F(Sdj_wrap, conjunction) {
   ASSERT_EQ(m.size(), min(bootCount, msgCount));
 }
 
-//TODO: go full https
+// TODO: go full https
 class restTester : public ::testing::Test {
 protected:
   restServer tst;
@@ -441,7 +442,7 @@ TEST_F(restTester, getPagedParts) {
   jval["pagesize"] = web::json::value::number(2 * pagesize);
   jval["begin"] = web::json::value::string(cursor1);
 
-  auto j2 {make_request("/v1/paged_search", jval)};
+  auto j2{make_request("/v1/paged_search", jval)};
   r = j2["items"].as_array();
   ASSERT_EQ(r.size(), 2 * pagesize);
   for (auto &v : r)
@@ -453,7 +454,7 @@ TEST_F(restTester, getPagedParts) {
   jval["pagesize"] = web::json::value::number(10 * pagesize);
   jval["begin"] = web::json::value::string(cursor2);
 
-  auto j3 {make_request("/v1/paged_search", jval)};
+  auto j3{make_request("/v1/paged_search", jval)};
   r = j3["items"].as_array();
   ASSERT_EQ(r.size(), 60 - 3 * pagesize);
   for (auto &v : r)
@@ -469,7 +470,7 @@ TEST_F(restTester, getPagedReverse) {
 
   jval = json::value::object();
   jval["backwards"] = web::json::value::boolean(true);
-  auto j2 {make_request("/v1/paged_search", jval)};
+  auto j2{make_request("/v1/paged_search", jval)};
   auto r2 = j2["items"].as_array();
 
   vector<string> v1, v2;
